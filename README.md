@@ -17,6 +17,7 @@ Converts a CSV file into a PostgreSQL table.
 	--cascade       drops tables with cascades
 	--sniff=N       limit field type detection to N rows (default: 1000)
 	--utf8          force client encoding to UTF8
+	--delimiter='d' select delimiter (default: , ) tab is ' '
 	--datatype=name[,name]:type 
 			sets the data type for field NAME to TYPE
 
