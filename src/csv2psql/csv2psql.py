@@ -476,7 +476,7 @@ def main(argv = None):
         flags = dict()
         flags['maxsniff']= 1000
 
-        opts, args = getopt.getopt(argv, "ak:s:q", ["help", "version", "schema=", "key=", "unique=", "cascade", "append", "utf8", "sniff=", "delimiter", "datatype=", "role="])
+        opts, args = getopt.getopt(argv, "ak:s:q", ["help", "version", "schema=", "key=", "unique=", "cascade", "append", "utf8", "sniff=", "delimiter=", "datatype=", "role="])
         for o, a in opts:
             if o in ("--version"):
                 print __version__
