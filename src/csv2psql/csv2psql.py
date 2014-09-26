@@ -267,6 +267,8 @@ def _sniffer(f, maxsniff = -1, datatype = {}):
             dt = datatype[_k]
             if dt in ['int', 'int4', 'integer']:
                 _tbl[_k] = { 'type': int, 'width': 4 }
+            elif dt in ['smallint', 'short']:
+                _tbl[_k] = { 'type': int, 'width': 2 }
             elif dt in ['float', 'double', 'float8']:
                 _tbl[_k] = { 'type': float, 'width': 8 }
             elif dt in ['text', 'str']:
@@ -399,7 +401,10 @@ def _csv2psql(ifn, tablename,
                 if dw > 4:
                     sqldt = "BIGINT"
                 else:
-                    sqldt = "INTEGER"
+                    if dw > 2:
+                        sqldt = "INTEGER"
+                    else:
+                        sqldt = "SMALLINT"
             elif dt == float:
                 if dw > 4:
                     sqldt = "DOUBLE PRECISION"
@@ -458,7 +463,7 @@ def _usage():
 
 _schemas = [ 'public' ]
 
-_datatypes = ['int4', 'float8', 'str', 'integer', 'float', 'double', 'text', 'bigint']
+_datatypes = ['int4', 'float8', 'str', 'integer', 'float', 'double', 'text', 'bigint', 'int8', 'smallint','short']
 _verbose = True
 
 def csv2psql(filename, tablename, **flags):

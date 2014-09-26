@@ -1,3 +1,6 @@
+*/*.iml
+*.iml
+.idea
 *.py[cod]
 
 # C extensions
