@@ -271,6 +271,8 @@ def _sniffer(f, maxsniff = -1, datatype = {}):
                 _tbl[_k] = { 'type': float, 'width': 8 }
             elif dt in ['text', 'str']:
                 _tbl[_k] = { 'type': str, 'width': -1 }
+            elif dt in ['int8', 'bigint']:
+                _tbl[_k] = { 'type': int, 'width': 8 }
 
     _need_sniff = False
     for k in f.fieldnames:
@@ -456,7 +458,7 @@ def _usage():
 
 _schemas = [ 'public' ]
 
-_datatypes = ['int4', 'float8', 'str', 'integer', 'float', 'double', 'text']
+_datatypes = ['int4', 'float8', 'str', 'integer', 'float', 'double', 'text', 'bigint']
 _verbose = True
 
 def csv2psql(filename, tablename, **flags):
