@@ -21,6 +21,7 @@ Converts a CSV file into a PostgreSQL table.
 			tab is --delimiter='     ', ('/t' will not work).
 	--datatype=name[,name]:type 
 			sets the data type for field NAME to TYPE
+			types available: int4, float8, str, integer, float, double, text, bigint
 
 	environment variables:
 	CSV2PSQL_SCHEMA      default value for --schema
