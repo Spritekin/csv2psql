@@ -175,6 +175,15 @@ constant in src/include/pg_config_manual.h.
             m += i.lower()
     return m[0:62]
 
+def isNoneOrEmptyOrBlankString (myString):
+    if myString:
+        if not myString.strip():
+            return True
+    else:
+        return True
+
+    return False
+
 def _mangle(s):
     return _mangle_table(s).replace('.', '_')
 
@@ -189,7 +198,7 @@ def _isbool(v):
     return str(v).strip().lower() == 'true' or str(v).strip().lower() == 'false'
 
 def _grow_varchar(s):
-    '''varchar grows by 80,255,1024
+    '''varchar grows by 80,150,255,1024
 
     >>> _grow_varchar(None)
     80
@@ -204,10 +213,10 @@ def _grow_varchar(s):
 
     '''
     if s is None:
-        return 80 # default size
+        return 150 # default size
     l = len(s)
     if l <= 80:
-        return 80
+        return 150
     if l <= 255:
         return 255
     if l <= 1024:
@@ -431,7 +440,7 @@ def _csv2psql(ifn, tablename,
 
     # pass 2
     if load_data:
-        print >>fout, "\COPY %s FROM stdin" % (tablename)
+        print >>fout, "\COPY %s FROM stdin NULL AS ''" % (tablename)
         f = csv.DictReader(sys.stdin if ifn == '-' else open(ifn, 'rU'), delimiter=delimiter)
         for row in f:
             # we have to ensure that we're cleanly reading the input data
