@@ -43,10 +43,10 @@ LOCK TABLE {perm_table} IN EXCLUSIVE MODE;
 UPDATE {perm_table}
 SET {sets}
 FROM {temp_table}
-WHERE {perm_table}.{key}; = {temp_table}.{key};
+WHERE {perm_table}.{key} = {temp_table}.{key};
 
 INSERT INTO {perm_table}
-SELECT {perm_table}.{key}; = {temp_table}.{key}
+SELECT {perm_table}.{key} = {temp_table}.{key}
 FROM {temp_table}
 LEFT OUTER JOIN {perm_table} ON ({perm_table}.{key}= {temp_table}.{key})
 WHERE {perm_table}.{key} IS NULL;

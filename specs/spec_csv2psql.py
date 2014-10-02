@@ -47,7 +47,7 @@ class SqlGenSpec(unittest.TestCase):
 
     def test_merge(self):
         sqlgen.merge("table1",
-                     {"one": 1, "two": 2},
+                     {"one": 1, "two": 2, "new_key": "1-2"},
                      "new_key",
                      "table2") | should | equal_to( dedent(
             """
@@ -56,10 +56,10 @@ class SqlGenSpec(unittest.TestCase):
             UPDATE table1
             SET one = table2.one,two = table2.two
             FROM table2
-            WHERE table1.new_key; = table2.new_key;
+            WHERE table1.new_key = table2.new_key;
 
             INSERT INTO table1
-            SELECT table1.new_key; = table2.new_key
+            SELECT table1.new_key = table2.new_key
             FROM table2
             LEFT OUTER JOIN table1 ON (table1.new_key= table2.new_key)
             WHERE table1.new_key IS NULL;
