@@ -48,7 +48,7 @@ class SqlGenSpec(unittest.TestCase):
     def test_merge(self):
         sqlgen.merge("table1",
                      {"one": 1, "two": 2, "new_key": "1-2"},
-                     "new_key",
+                     "new_key",         ]
                      "table2") | should | equal_to( dedent(
             """
             BEGIN;

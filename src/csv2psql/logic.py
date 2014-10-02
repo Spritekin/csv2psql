@@ -182,7 +182,7 @@ def csv2psql(ifn, tablename,
              dates=None):
     #maybe copy?
     orig_tablename = tablename + ""
-    if create_table and is_merge:
+    if is_merge:
         tablename = "temp_" + tablename
 
     if schema is None:
