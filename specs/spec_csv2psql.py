@@ -27,8 +27,8 @@ class SqlGenSpec(unittest.TestCase):
         END;"""))
 
     def test_make_set(self):
-        sqlgen._make_set("table", {"one": 1, "two": 2}, "primary") | should | equal_to(
-            "one = temp_table.one,two = temp_table.two")
+        sqlgen._make_set("table", {"one": 1, "two": 2}, "primary", "temp") | should | equal_to(
+            "one = temp.one,two = temp.two")
 
     def test_join_keys(self):
         sqlgen._join_keys(['one', 'two', 'three']) \
@@ -54,9 +54,9 @@ class SqlGenSpec(unittest.TestCase):
             LOCK TABLE table1 IN EXCLUSIVE MODE;
 
             UPDATE table1
-            SET one = temp_table.one,two = temp_table.two
+            SET one = table2.one,two = table2.two
             FROM table2
-            WHERE table1.new_key; = table2.new_key
+            WHERE table1.new_key; = table2.new_key;
 
             INSERT INTO table1
             SELECT table1.new_key; = table2.new_key

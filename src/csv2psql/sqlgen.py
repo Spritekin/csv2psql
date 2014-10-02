@@ -9,7 +9,7 @@ __author__ = 'Nicholas McCready'
 # - key_name =  key/index name
 # - indexes (column names)
 # - values
-_mergeString = """
+_merge_function_str = """
 CREATE FUNCTION merge({column_types}) RETURNS VOID AS
 $$
 BEGIN
@@ -43,7 +43,7 @@ LOCK TABLE {perm_table} IN EXCLUSIVE MODE;
 UPDATE {perm_table}
 SET {sets}
 FROM {temp_table}
-WHERE {perm_table}.{key}; = {temp_table}.{key}
+WHERE {perm_table}.{key}; = {temp_table}.{key};
 
 INSERT INTO {perm_table}
 SELECT {perm_table}.{key}; = {temp_table}.{key}
@@ -105,24 +105,28 @@ def _date(tablename, colname, dateformat):
     return _date_str.format(tablename=tablename, col=colname, dateformat=dateformat)
 
 
-def _make_set(tablename, tbl, primary_key):
-    tablename = "temp_" + tablename
+def _make_set(tablename, tbl, primary_key,temp_tablename):
     str = ""
     for key in tbl:
         if key != primary_key:
-            str = "{col} = {temp_table}.{col}".format(col=key, temp_table=tablename) + "," + str
+            str = "{col} = {temp_table}.{col}".format(col=key, temp_table=temp_tablename) + "," + str
 
     return str[:-1]
 
 
-def bulk_upsert(tablename, tbl, primary_key, temp_tablename=None):
-    if temp_tablename is None:
+def bulk_upsert(tablename, tbl, primary_key, temp_tablename=''):
+    if not temp_tablename:
         temp_tablename = "temp_" + tablename
-    sets = _make_set(tbl, primary_key)
-    return _bulk_upsert_str.format(perm_table=tablename,
-                                   temp_table=temp_tablename, sets=sets)
+    sets = _make_set(tablename, tbl, primary_key, temp_tablename)
+    # print "sets: " + sets
+    ret = _bulk_upsert_str.format(perm_table=tablename,
+                                  temp_table=temp_tablename,
+                                  sets=sets,
+                                  key=primary_key)
+    # print ret
+    return ret
 
 
 def merge(tablename, tbl, primary_key, temp_tablename):
-    return bulk_upsert(tablename, temp_tablename, tbl, primary_key)
+    return bulk_upsert(tablename, tbl, primary_key, temp_tablename)
 
