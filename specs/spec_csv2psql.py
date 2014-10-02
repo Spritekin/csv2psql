@@ -51,6 +51,7 @@ class SqlGenSpec(unittest.TestCase):
                      "new_key",
                      "table2") | should | equal_to( dedent(
             """
+            BEGIN;
             LOCK TABLE table1 IN EXCLUSIVE MODE;
 
             UPDATE table1
@@ -67,3 +68,7 @@ class SqlGenSpec(unittest.TestCase):
             COMMIT;
             """
         ))
+
+    def test_pg_dump_str(self):
+        sqlgen._pg_dump_str("db","schema","table1","-s") \
+        | should | equal_to("pg_dump db --schema schema --table table1 -s")

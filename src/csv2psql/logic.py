@@ -176,10 +176,14 @@ def csv2psql(ifn, tablename,
              strip_prefix=True,
              truncate_table=False,
              uniquekey=None,
+             database_name='',
              is_merge=False,
              joinkeys=None,
              dates=None):
     orig_tablename = tablename.copy()
+    if create_table and is_merge:
+        tablename += "temp_"
+
     if schema is None:
         schema = os.getenv('CSV2PSQL_SCHEMA', 'public').strip()
         if schema == '':
@@ -196,11 +200,11 @@ def csv2psql(ifn, tablename,
 
     # pass 1
     _tbl = dict()
-    if create_table:
-        f = csv.DictReader(sys.stdin if ifn == '-' else open(ifn, 'rU'), restval='', delimiter=delimiter)
-        _tbl = _sniffer(f, maxsniff, datatype)
+    # always create temporary table
+    f = csv.DictReader(sys.stdin if ifn == '-' else open(ifn, 'rU'), restval='', delimiter=delimiter)
+    _tbl = _sniffer(f, maxsniff, datatype)
 
-    print >> fout, "BEGIN;\n"
+    # print >> fout, "BEGIN;\n"
 
     if default_user is not None:
         print >> fout, "SET ROLE", default_user, ";\n"
@@ -220,9 +224,11 @@ def csv2psql(ifn, tablename,
     if quiet:
         print >> fout, "SET client_min_messages TO ERROR;\n"
 
-    # drop table if we plan to create but not truncate
-    if create_table:
-        _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, is_merge)
+    #really create the temp schema
+    if create_table and is_merge:
+        _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, True)
+    elif create_table:  #legacy support
+        _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey)
 
     if truncate_table and not load_data:
         print >> fout, "TRUNCATE TABLE", tablename, ";"
@@ -249,6 +255,10 @@ def csv2psql(ifn, tablename,
     primary_key = pkey if pkey is not None else join_keys_key_name
     #take temporary table and merge it into a real table
     if is_merge and primary_key is not None:
+        if create_table and database_name:
+            print >> fout, sqlgen.pg_dump(database_name, schema, tablename)
+            #TODO re-order the primary_key to first column
+
         print >> fout, sqlgen.merge(orig_tablename, _tbl, primary_key, tablename)
 
     return _tbl
@@ -259,7 +269,6 @@ def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_us
     if not is_temp:
         print >> fout, "DROP TABLE IF EXISTS", tablename, "CASCADE;" if cascade else ";"
     else:
-        tablename = "temp_" + tablename
         temporary_str = "TEMPORARY"
 
     print >> fout, "CREATE %s TABLE" % temporary_str, tablename, "(\n\t",

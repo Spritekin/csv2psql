@@ -137,6 +137,8 @@ def main(argv=None):
                 (dates_commas, date_format) = a.lower().split(':')
                 dates = dates_commas.lower().split(',')
                 flags['dates'] = (dates, date_format)
+            elif o in ("--databasename"):
+                flags["database_name"] = a.lower()
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 

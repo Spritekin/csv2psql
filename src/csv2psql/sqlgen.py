@@ -1,4 +1,5 @@
 from textwrap import dedent
+from os import popen
 
 __author__ = 'Nicholas McCready'
 
@@ -38,6 +39,7 @@ LANGUAGE plpgsql;
 # tempTableName
 #
 _bulk_upsert_str = """
+BEGIN;
 LOCK TABLE {perm_table} IN EXCLUSIVE MODE;
 
 UPDATE {perm_table}
@@ -105,7 +107,7 @@ def _date(tablename, colname, dateformat):
     return _date_str.format(tablename=tablename, col=colname, dateformat=dateformat)
 
 
-def _make_set(tablename, tbl, primary_key,temp_tablename):
+def _make_set(tablename, tbl, primary_key, temp_tablename):
     str = ""
     for key in tbl:
         if key != primary_key:
@@ -130,3 +132,28 @@ def bulk_upsert(tablename, tbl, primary_key, temp_tablename=''):
 def merge(tablename, tbl, primary_key, temp_tablename):
     return bulk_upsert(tablename, tbl, primary_key, temp_tablename)
 
+
+def _pg_dump_str(db_name, schema_name, table_name, option):
+    """
+    :param db_name: all name props are self explanatory
+    :param schema_name:
+    :param table_name:
+    :param option: pg_dump options example is -s for schema only
+    :return:
+    """
+    return "pg_dump {db_name} --schema {schema_name} --table {table_name} {option}".format(
+        db_name=db_name,
+        schema_name=schema_name,
+        table_name=table_name,
+        option=option,
+    )
+
+
+def pg_dump(db_name, schema_name, table_name, option="-s"):
+    """
+    see _pg_dump_str
+
+    This just executes pg_dump with popen and returns the output
+    """
+    cmd = _pg_dump_str(db_name, schema_name, table_name, option)
+    return popen(cmd).read()
