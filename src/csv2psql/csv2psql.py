@@ -34,6 +34,13 @@ options include:
 --tablename     tablename to override using the *.csv filename
 
 --databasename  databasename is required upon is_merge
+
+--is_merge indicated to create a table with temp_ in front of the table name
+
+--is_dump  uses pd_dump to possibly get a temp table's
+           schema (as long as is_merge = true && --key exists && --append is not present).
+           Lastly merging sql code is generated to merge a table with its temp_table.
+
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
 CSV2PSQL_ROLE        default value for --role
@@ -63,8 +70,6 @@ _schemas = ['public']
 
 _data_types = ['int4', 'float8', 'str', 'integer', 'float', 'double', 'text', 'bigint', 'int8', 'smallint', 'short']
 
-_dump_types = ['copy', 'sql']
-
 
 def csv2psql(filename, tablename, **flags):
     ''' Main entry point. Converts CSV `filename` into PostgreSQL `tablename`.
@@ -92,7 +97,8 @@ def main(argv=None):
                                            "unique=", "cascade", "append", "utf8",
                                            "sniff=", "delimiter=", "datatype=",
                                            "role=", "is_merge=", "joinkeys=",
-                                           "dates=", "tablename=","databasename="])
+                                           "dates=", "tablename=", "databasename=",
+                                           "is_dump=", "is_merge="])
         for o, a in opts:
             if o in ("--version"):
                 print __version__
@@ -150,6 +156,8 @@ def main(argv=None):
                 flags['dates'][date_format] = dates
             elif o in ("--databasename"):
                 flags["database_name"] = a.lower()
+            elif o in ("--is_dump"):
+                flags["is_dump"] = True if a.lower() == 'true' else False
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 

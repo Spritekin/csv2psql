@@ -179,7 +179,8 @@ def csv2psql(ifn, tablename,
              database_name='',
              is_merge=False,
              joinkeys=None,
-             dates=None):
+             dates=None,
+             is_dump=False):
     #maybe copy?
     orig_tablename = tablename + ""
     if is_merge:
@@ -255,7 +256,7 @@ def csv2psql(ifn, tablename,
 
     primary_key = pkey if pkey is not None else join_keys_key_name
     #take temporary table and merge it into a real table
-    if is_merge and primary_key is not None:
+    if is_merge and primary_key is not None and is_dump:
         if create_table and database_name:
             print >> fout, sqlgen.pg_dump(database_name, schema, tablename)
             #TODO re-order the primary_key to first column

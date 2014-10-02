@@ -48,7 +48,7 @@ class SqlGenSpec(unittest.TestCase):
     def test_merge(self):
         sqlgen.merge("table1",
                      {"one": 1, "two": 2, "new_key": "1-2"},
-                     "new_key",         ]
+                     "new_key",
                      "table2") | should | equal_to( dedent(
             """
             BEGIN;
@@ -72,3 +72,9 @@ class SqlGenSpec(unittest.TestCase):
     def test_pg_dump_str(self):
         sqlgen._pg_dump_str("db","schema","table1","-s") \
         | should | equal_to("pg_dump db --schema schema --table table1 -s")
+
+    def test_verify_dates(self):
+        sqlgen.verify_dates("sometable", "YYYY", ['purchased', 'sold']) | should | equal_to(
+            dedent("""
+                    SELECT Count(*) AS YYYY FROM sometable
+                    WHERE purchased IS NOT NULL AND sold IS NOT NULL ;"""))

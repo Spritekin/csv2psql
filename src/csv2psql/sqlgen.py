@@ -75,6 +75,23 @@ ALTER TABLE {tablename} ALTER COLUMN {primary_key} SET NOT NULL;
 ALTER TABLE {tablename} ADD PRIMARY KEY ({primary_key})
 """
 
+_verify_dates = dedent("""
+SELECT Count(*) AS {date_format} FROM {tablename}
+WHERE{not_nulls};""")
+
+
+def verify_dates(table_name, date_format, cols):
+    not_nulls_str = " "
+    for date in cols:
+        not_nulls_str += date + " IS NOT NULL AND "
+    #remove last AND
+    not_nulls_str = not_nulls_str[:-4]
+
+    return _verify_dates.format(
+        date_format=date_format,
+        tablename=table_name,
+        not_nulls=not_nulls_str)
+
 
 def _join_keys(keys_to_join):
     joined_str = ""
