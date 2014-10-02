@@ -4,8 +4,9 @@ import os.path
 import csv
 from mangle import *
 from reservedwords import *
+from sqlgen import bulk_update
 
-
+#TODO: write spec
 def _psql_identifier(s):
     '''wraps any reserved word with double quote escapes'''
     k = mangle(s)
@@ -13,11 +14,11 @@ def _psql_identifier(s):
         return '"%s"' % (k)
     return k
 
-
+#TODO: write spec
 def _isbool(v):
     return str(v).strip().lower() == 'true' or str(v).strip().lower() == 'false'
 
-
+#TODO: write spec
 def _grow_varchar(s):
     '''varchar grows by 80,150,255,1024
 
@@ -195,6 +196,8 @@ def csv2psql(ifn, tablename,
         f = csv.DictReader(sys.stdin if ifn == '-' else open(ifn, 'rU'), restval='', delimiter=delimiter)
         _tbl = _sniffer(f, maxsniff, datatype)
 
+    print >> fout, "BEGIN;\n"
+
     if default_user is not None:
         print >> fout, "SET ROLE", default_user, ";\n"
 
@@ -233,10 +236,15 @@ def csv2psql(ifn, tablename,
     return _tbl
 
 
-def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey):
-    print >> fout, "DROP TABLE IF EXISTS", tablename, "CASCADE;" if cascade else ";"
+def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, isTemp = False):
+    temporary_str = ""
+    if not isTemp:
+        print >> fout, "DROP TABLE IF EXISTS", tablename, "CASCADE;" if cascade else ";"
+    else:
+        tablename = "temp_" + tablename
+        temporary_str = "TEMPORARY"
 
-    print >> fout, "CREATE TABLE", tablename, "(\n\t",
+    print >> fout, "CREATE %s TABLE" % temporary_str, tablename, "(\n\t",
     cols = list()
     for k in f.fieldnames:
         _k = mangle(k)

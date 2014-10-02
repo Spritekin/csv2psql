@@ -27,6 +27,9 @@ options include:
 
 --joinkeys=comma delimited list of keys to join to make a primary key
 
+--dates=[keys1,key2]:type
+        comma delimited list of keys with a type
+
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
 CSV2PSQL_ROLE        default value for --role
