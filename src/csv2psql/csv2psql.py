@@ -25,10 +25,11 @@ options include:
                 sets the data type for field NAME to TYPE
 --dumptype=type use type copy or sql (COPY is PSQL COPY, SQL is PURE INSERT/UPDATES)
 
---joinkeys=comma delimited list of keys to join to make a primary key
+--joinkeys= keys[key1,key2]:keyname
+                Array of column name delimiteed by commas : to new key_name
 
---dates=[keys1,key2]:type
-        comma delimited list of keys with a type
+--dates=[keys1,key2]:format
+        comma delimited list of keys with a date format
 
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
@@ -39,6 +40,7 @@ __version__ = '0.4.2'
 __credits__ = "Copyright (c) 2011-2013 NCEAS (UCSB). All rights reserved."
 
 import sys
+
 assert sys.version_info >= (2, 6), "Requires python v2.6 or better"
 
 import os
@@ -124,17 +126,17 @@ def main(argv=None):
                     raise getopt.GetoptError('unknown data type %s (use %s)' % (v, _data_types))
             elif o in ("-q"):
                 _verbose = False
-            elif o in ("--dumptype"):
-                if 'is_copy_dump' not in flags:
-                    flags['is_copy_dump'] = False
-
-                dump_t = a.lower()
-                if dump_t in _dump_types:
-                    flags['is_copy_dump'] = True if dump_t == 'copy' else False
-                else:
-                    raise getopt.GetoptError('unknown dump type %s (use %s)' % (dump_t, _dump_types))
+            elif o in ("--is_merge"):
+                flags['is_merge'] = True if a.lower() == 'true' else False
             elif o in ("--joinkeys"):
-                flags['joinkeys'] = a.lower().split(',')
+                ( keys, key_name ) = a.lower().split(':')
+                keys = keys.lower().split(',')
+                flags['joinkeys'] = (keys, key_name)
+
+            elif o in ("--dates"):
+                (dates_commas, date_format) = a.lower().split(':')
+                dates = dates_commas.lower().split(',')
+                flags['dates'] = (dates, date_format)
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 

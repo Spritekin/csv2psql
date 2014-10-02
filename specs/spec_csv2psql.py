@@ -1,7 +1,8 @@
-
 from csv2psql import reservedwords, mangle, sqlgen
 import unittest
 from should_dsl import should, should_not
+from textwrap import dedent
+
 
 class Csv2psqlSpec(unittest.TestCase):
     def test_psql_reserved_words_exists(self):
@@ -14,17 +15,55 @@ class Csv2psqlSpec(unittest.TestCase):
 
 class SqlGenSpec(unittest.TestCase):
     def test_date(self):
-        sqlgen.date("db","col1","YYYY") | should | equal_to("""
-        alter table db alter column col1 TYPE DATE
-        using
+        sqlgen._date("db", "col1", "YYYY") | should | equal_to(dedent("""
+        ALTER TABLE db ALTER COLUMN col1 TYPE DATE
+        USING
         CASE
-          WHEN col1 is not NULL and col1::int <> 0
-          then
-            to_date(col1::text,'YYYY')
+          WHEN col1 IS NOT NULL AND col1::INT <> 0
+          THEN
+            to_date(col1::TEXT,'YYYY')
         ELSE
           NULL
-        END;""")
+        END;"""))
 
     def test_make_set(self):
-        sqlgen._make_set("table",{"one":1,"two":2},"primary") | should | equal_to(
+        sqlgen._make_set("table", {"one": 1, "two": 2}, "primary") | should | equal_to(
             "one = temp_table.one,two = temp_table.two")
+
+    def test_join_keys(self):
+        sqlgen._join_keys(['one', 'two', 'three']) \
+        | should | equal_to("one || '-' || two || '-' || three")
+
+    def test_make_primary_key_w_join(self):
+        sqlgen.make_primary_key_w_join("db","new_key", ['one', 'two', 'three']) | should |\
+        equal_to(dedent("""
+        ALTER TABLE db ADD COLUMN new_key VARCHAR(200);
+        UPDATE db SET new_key = (one || '-' || two || '-' || three);
+
+        -- primary
+        ALTER TABLE db ALTER COLUMN new_key SET NOT NULL;
+        ALTER TABLE db ADD PRIMARY KEY (new_key)
+        """))
+
+    def test_merge(self):
+        sqlgen.merge("table1",
+                     {"one": 1, "two": 2},
+                     "new_key",
+                     "table2") | should | equal_to( dedent(
+            """
+            LOCK TABLE table1 IN EXCLUSIVE MODE;
+
+            UPDATE table1
+            SET one = temp_table.one,two = temp_table.two
+            FROM table2
+            WHERE table1.new_key; = table2.new_key
+
+            INSERT INTO table1
+            SELECT table1.new_key; = table2.new_key
+            FROM table2
+            LEFT OUTER JOIN table1 ON (table1.new_key= table2.new_key)
+            WHERE table1.new_key IS NULL;
+
+            COMMIT;
+            """
+        ))

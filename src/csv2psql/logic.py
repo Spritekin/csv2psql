@@ -4,9 +4,9 @@ import os.path
 import csv
 from mangle import *
 from reservedwords import *
-from sqlgen import bulk_update
+import sqlgen
 
-#TODO: write spec
+# TODO: write spec
 def _psql_identifier(s):
     '''wraps any reserved word with double quote escapes'''
     k = mangle(s)
@@ -14,11 +14,13 @@ def _psql_identifier(s):
         return '"%s"' % (k)
     return k
 
-#TODO: write spec
+
+# TODO: write spec
 def _isbool(v):
     return str(v).strip().lower() == 'true' or str(v).strip().lower() == 'false'
 
-#TODO: write spec
+
+# TODO: write spec
 def _grow_varchar(s):
     '''varchar grows by 80,150,255,1024
 
@@ -174,8 +176,10 @@ def csv2psql(ifn, tablename,
              strip_prefix=True,
              truncate_table=False,
              uniquekey=None,
-             is_copy_dump=True,
-             joinkeys=None):
+             is_merge=False,
+             joinkeys=None,
+             dates=None):
+    orig_tablename = tablename.copy()
     if schema is None:
         schema = os.getenv('CSV2PSQL_SCHEMA', 'public').strip()
         if schema == '':
@@ -218,27 +222,41 @@ def csv2psql(ifn, tablename,
 
     # drop table if we plan to create but not truncate
     if create_table:
-        _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey)
+        _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, is_merge)
 
     if truncate_table and not load_data:
         print >> fout, "TRUNCATE TABLE", tablename, ";"
 
     # pass 2
     if load_data:
-        if is_copy_dump:
-            _out_as_copy(fout, tablename, delimiter, _tbl, ifn)
-        else:
-            _out_as_dump_sql()
+        _out_as_copy(fout, tablename, delimiter, _tbl, ifn)
 
     if load_data and analyze_table:
         print >> fout, "ANALYZE", tablename, ";"
 
+    #fix bad dates ints or stings to correct int format
+    if dates is not None:
+        (cols, date_format) = dates
+        print >> fout, sqlgen.dates(tablename, cols, date_format)
+
+    #take cols and merge them into one primary_key
+    join_keys_key_name = None
+    if joinkeys is not None:
+        (keys, key_name) = joinkeys
+        join_keys_key_name = key_name
+        print >> fout, sqlgen.make_primary_key_w_join(tablename, key_name, keys)
+
+    primary_key = pkey if pkey is not None else join_keys_key_name
+    #take temporary table and merge it into a real table
+    if is_merge and primary_key is not None:
+        print >> fout, sqlgen.merge(orig_tablename, _tbl, primary_key, tablename)
+
     return _tbl
 
 
-def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, isTemp = False):
+def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, is_temp=False):
     temporary_str = ""
-    if not isTemp:
+    if not is_temp:
         print >> fout, "DROP TABLE IF EXISTS", tablename, "CASCADE;" if cascade else ";"
     else:
         tablename = "temp_" + tablename
