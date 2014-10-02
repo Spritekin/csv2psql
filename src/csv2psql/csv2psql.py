@@ -76,8 +76,8 @@ def csv2psql(filename, tablename, **flags):
 
 
 def main(argv=None):
-    import pydevd
-    pydevd.settrace('localhost', port=9797, stdoutToServer=True, stderrToServer=True, suspend=False)
+    # import pydevd
+    # pydevd.settrace('localhost', port=9797, stdoutToServer=True, stderrToServer=True, suspend=False)
     '''command-line interface'''
     tablename = None
     if argv is None:
