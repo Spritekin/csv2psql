@@ -31,6 +31,9 @@ options include:
 --dates=[keys1,key2]:format
         comma delimited list of keys with a date format
 
+--tablename     tablename to override using the *.csv filename
+
+--databasename  databasename is required upon is_merge
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
 CSV2PSQL_ROLE        default value for --role
@@ -73,7 +76,10 @@ def csv2psql(filename, tablename, **flags):
 
 
 def main(argv=None):
+    import pydevd
+    pydevd.settrace('localhost', port=9797, stdoutToServer=True, stderrToServer=True, suspend=False)
     '''command-line interface'''
+    tablename = None
     if argv is None:
         argv = sys.argv[1:]
     try:
@@ -85,7 +91,8 @@ def main(argv=None):
             getopt.getopt(argv, "ak:s:q", ["help", "version", "schema=", "key=",
                                            "unique=", "cascade", "append", "utf8",
                                            "sniff=", "delimiter=", "datatype=",
-                                           "role=", "dumptype=", "joinkeys="])
+                                           "role=", "is_merge=", "joinkeys=",
+                                           "dates=", "tablename=","databasename="])
         for o, a in opts:
             if o in ("--version"):
                 print __version__
@@ -128,15 +135,19 @@ def main(argv=None):
                 _verbose = False
             elif o in ("--is_merge"):
                 flags['is_merge'] = True if a.lower() == 'true' else False
+            elif o in ("--tablename"):
+                tablename = a.lower()
             elif o in ("--joinkeys"):
                 ( keys, key_name ) = a.lower().split(':')
                 keys = keys.lower().split(',')
                 flags['joinkeys'] = (keys, key_name)
 
             elif o in ("--dates"):
-                (dates_commas, date_format) = a.lower().split(':')
+                (dates_commas, date_format) = a.split(':')
                 dates = dates_commas.lower().split(',')
-                flags['dates'] = (dates, date_format)
+                if not flags.has_key('dates'):
+                    flags['dates'] = dict()
+                flags['dates'][date_format] = dates
             elif o in ("--databasename"):
                 flags["database_name"] = a.lower()
             else:
@@ -150,8 +161,8 @@ def main(argv=None):
             fn = args[0]
             if fn == '-':
                 raise getopt.GetoptError('cannot guess tablename')
-
-            tablename = os.path.splitext(os.path.basename(fn))[0]
+            if tablename is None:
+                tablename = os.path.splitext(os.path.basename(fn))[0]
             if 'schema' not in flags:
                 for s in _schemas:
                     if tablename.startswith(s):
@@ -163,7 +174,8 @@ def main(argv=None):
             return 0
         elif len(args) == 2:
             fn = args[0]
-            tablename = args[1]
+            if tablename is None:
+                tablename = args[1]
             print flags;
             csv2psql(fn, mangle_table(tablename), **flags)
             return 0

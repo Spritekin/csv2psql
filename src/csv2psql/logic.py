@@ -180,9 +180,10 @@ def csv2psql(ifn, tablename,
              is_merge=False,
              joinkeys=None,
              dates=None):
-    orig_tablename = tablename.copy()
+    #maybe copy?
+    orig_tablename = tablename + ""
     if create_table and is_merge:
-        tablename += "temp_"
+        tablename = "temp_" + tablename
 
     if schema is None:
         schema = os.getenv('CSV2PSQL_SCHEMA', 'public').strip()
@@ -242,8 +243,8 @@ def csv2psql(ifn, tablename,
 
     #fix bad dates ints or stings to correct int format
     if dates is not None:
-        (cols, date_format) = dates
-        print >> fout, sqlgen.dates(tablename, cols, date_format)
+        for date_format, cols in dates.iteritems():
+            print >> fout, sqlgen.dates(tablename, cols, date_format)
 
     #take cols and merge them into one primary_key
     join_keys_key_name = None
