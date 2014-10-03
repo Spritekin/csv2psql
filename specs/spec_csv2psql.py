@@ -27,8 +27,8 @@ class SqlGenSpec(unittest.TestCase):
         END;"""))
 
     def test_make_set(self):
-        sqlgen._make_set(["one", "two"], "primary", "temp") | should | equal_to(
-            "one = temp.one,two = temp.two")
+        sqlgen._make_set(["one", "two"], "primary", "temp", True) | should | equal_to(
+            "primary = temp.primary,one = temp.one,two = temp.two")
 
     def test_join_keys(self):
         sqlgen._join_keys(['one', 'two', 'three']) \
@@ -49,18 +49,19 @@ class SqlGenSpec(unittest.TestCase):
         sqlgen.merge(["one", "two"],
                      "table1",
                      "new_key",
+                     True,
                      "tempTable") | should | equal_to( dedent(
             """
             BEGIN TRANSACTION;
             LOCK TABLE table1 IN EXCLUSIVE MODE;
 
             UPDATE table1
-            SET one = tempTable.one,two = tempTable.two
+            SET primary = tempTable.new_key,one = tempTable.one,two = tempTable.two
             FROM tempTable
             WHERE table1.new_key = tempTable.new_key;
 
             INSERT INTO table1
-            SELECT tempTable.one,tempTable.two,tempTable.new_key
+            SELECT tempTable.new_key,tempTable.one,tempTable.two,tempTable.new_key
             FROM tempTable
             LEFT OUTER JOIN table1 ON (table1.new_key= tempTable.new_key)
             WHERE table1.new_key IS NULL;

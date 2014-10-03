@@ -182,7 +182,8 @@ def csv2psql(ifn, tablename,
              is_merge=False,
              joinkeys=None,
              dates=None,
-             is_dump=False):
+             is_dump=False,
+             make_primary_key_first=False):
     #maybe copy?
     orig_tablename = tablename + ""
     skip = is_merge or is_dump
@@ -276,7 +277,9 @@ def csv2psql(ifn, tablename,
 
     if is_merge and primary_key is not None:
         print "-- mangled_field_names: %s" % mangled_field_names
-        print >> fout, sqlgen.merge(mangled_field_names, orig_tablename, primary_key, tablename)
+        print "-- make_primary_key_first %s" % make_primary_key_first
+        print >> fout, sqlgen.merge(mangled_field_names, orig_tablename,
+                                    primary_key, make_primary_key_first, tablename)
     return _tbl
 
 

@@ -41,6 +41,8 @@ options include:
            schema (as long as --key exists && --append is not present).
            Lastly merging sql code is generated to merge a table with its temp_table.
 
+--primaryfirst=bool defaults to false
+
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
 CSV2PSQL_ROLE        default value for --role
@@ -98,7 +100,7 @@ def main(argv=None):
                                            "sniff=", "delimiter=", "datatype=",
                                            "role=", "is_merge=", "joinkeys=",
                                            "dates=", "tablename=", "databasename=",
-                                           "is_dump=", "is_merge="])
+                                           "is_dump=", "is_merge=","primaryfirst="])
         for o, a in opts:
             if o in ("--version"):
                 print __version__
@@ -158,6 +160,8 @@ def main(argv=None):
                 flags["database_name"] = a.lower()
             elif o in ("--is_dump"):
                 flags["is_dump"] = True if a.lower() == 'true' else False
+            elif o in ("--primaryfirst"):
+                flags["make_primary_key_first"] = True if a.lower() == 'true' else False
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 

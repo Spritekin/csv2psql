@@ -48,7 +48,7 @@ FROM {temp_table}
 WHERE {perm_table}.{key} = {temp_table}.{key};
 
 INSERT INTO {perm_table}
-SELECT {selects},{temp_table}.{key}
+SELECT {selects}
 FROM {temp_table}
 LEFT OUTER JOIN {perm_table} ON ({perm_table}.{key}= {temp_table}.{key})
 WHERE {perm_table}.{key} IS NULL;
@@ -124,29 +124,39 @@ def _date(tablename, colname, dateformat):
     return _date_str.format(tablename=tablename, col=colname, dateformat=dateformat)
 
 
-def _make_set(fieldnames, primary_key, temp_tablename):
+def _make_set(fieldnames, primary_key, temp_tablename, make_primary_first):
     str = ""
-    for key in fieldnames:
-        if key != primary_key:
-            str += "{col} = {temp_table}.{col}".format(col=key, temp_table=temp_tablename) + ","
+    array = _get_fieldnames_w_key(fieldnames, primary_key, make_primary_first)
+    for key in array:
+        str += "{col} = {temp_table}.{col}".format(col=key, temp_table=temp_tablename) + ","
 
     return str[:-1]
 
 
-def _make_selects(fieldnames, primary_key, temp_tablename):
+def _get_fieldnames_w_key(fieldnames, primary_key, make_primary_first):
+    #keep fieldnames immutable
+    array = fieldnames[:]
+    if make_primary_first:
+        array.insert(0, primary_key)
+    else:
+        array.append(primary_key)
+    return array
+
+
+def _make_selects(fieldnames, primary_key, temp_tablename, make_primary_first):
     str = ""
-    for col in fieldnames:
-        if col != primary_key:
-            str += "{temp_table}.{col}".format(col=col, temp_table=temp_tablename) + ","
+    array = _get_fieldnames_w_key(fieldnames, primary_key, make_primary_first)
+    for col in array:
+        str += "{temp_table}.{col}".format(col=col, temp_table=temp_tablename) + ","
 
     return str[:-1]
 
 
-def bulk_upsert(fieldnames, tablename, primary_key, temp_tablename=''):
+def bulk_upsert(fieldnames, tablename, primary_key, make_primary_first, temp_tablename=''):
     if not temp_tablename:
         temp_tablename = "temp_" + tablename
-    sets = _make_set(fieldnames, primary_key, temp_tablename)
-    selects = _make_selects(fieldnames, primary_key, temp_tablename)
+    sets = _make_set(fieldnames, primary_key, temp_tablename, make_primary_first)
+    selects = _make_selects(fieldnames, primary_key, temp_tablename, make_primary_first)
     # print "sets: " + sets
     ret = _bulk_upsert_str.format(perm_table=tablename,
                                   temp_table=temp_tablename,
@@ -157,13 +167,13 @@ def bulk_upsert(fieldnames, tablename, primary_key, temp_tablename=''):
     return ret
 
 
-def merge(fieldnames, tablename, primary_key, temp_tablename):
+def merge(fieldnames, tablename, primary_key, make_primary_first, temp_tablename):
     print "-- tablename: %s" % tablename
     print "-- fieldnames: %s" % fieldnames
     print "-- primary_key: %s" % primary_key
     print "-- temp_tablename: %s" % temp_tablename
 
-    return bulk_upsert(fieldnames, tablename, primary_key, temp_tablename)
+    return bulk_upsert(fieldnames, tablename, primary_key, make_primary_first, temp_tablename)
 
 
 def _pg_dump_str(db_name, schema_name, table_name, option):
