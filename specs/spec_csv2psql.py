@@ -42,7 +42,7 @@ class SqlGenSpec(unittest.TestCase):
 
         -- primary
         ALTER TABLE db ALTER COLUMN new_key SET NOT NULL;
-        ALTER TABLE db ADD PRIMARY KEY (new_key)
+        ALTER TABLE db ADD PRIMARY KEY (new_key);
         """))
 
     def test_merge(self):

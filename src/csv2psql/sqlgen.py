@@ -72,7 +72,7 @@ UPDATE {tablename} SET {primary_key} = ({keys_to_join});
 
 -- primary
 ALTER TABLE {tablename} ALTER COLUMN {primary_key} SET NOT NULL;
-ALTER TABLE {tablename} ADD PRIMARY KEY ({primary_key})
+ALTER TABLE {tablename} ADD PRIMARY KEY ({primary_key});
 """
 
 _verify_dates = dedent("""
@@ -147,6 +147,11 @@ def bulk_upsert(tablename, tbl, primary_key, temp_tablename=''):
 
 
 def merge(tablename, tbl, primary_key, temp_tablename):
+    print "-- tablename: %s" % tablename
+    print "-- tbl: %s" % tbl
+    print "-- primary_key: %s" % primary_key
+    print "-- temp_tablename: %s" % temp_tablename
+
     return bulk_upsert(tablename, tbl, primary_key, temp_tablename)
 
 

@@ -177,7 +177,7 @@ def main(argv=None):
                         flags['schema'] = s
                         break
 
-            #print flags
+            print "-- flags: %s" % flags
             csv2psql(fn, mangle_table(tablename), **flags)
             return 0
         elif len(args) == 2:

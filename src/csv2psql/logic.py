@@ -70,7 +70,8 @@ def _psqlencode(v, dt):
 
     '''
     if v is None or v == '':
-        return '' if dt == str else '\\N'
+        #if dt == str else '\\N'
+        return ''
 
     if dt == int:
         if str(v).strip().lower() == 'true':
@@ -92,7 +93,8 @@ def _psqlencode(v, dt):
 def _sniffer(f, maxsniff=-1, datatype={}):
     '''sniffs out data types'''
     _tbl = dict()
-
+    print "-- fieldnames: %s" % f.fieldnames
+    print "-- datatype: %s" % datatype
     # initialize data types
     for k in f.fieldnames:
         _k = mangle(k)
@@ -183,15 +185,18 @@ def csv2psql(ifn, tablename,
              is_dump=False):
     #maybe copy?
     orig_tablename = tablename + ""
-    if is_merge:
+    skip = is_merge or is_dump
+    print "-- skip: %s" % skip
+
+    if skip:
         tablename = "temp_" + tablename
 
-    if schema is None:
+    if schema is None and not skip:
         schema = os.getenv('CSV2PSQL_SCHEMA', 'public').strip()
         if schema == '':
             schema = None
 
-    if default_user is None:
+    if default_user is None and not skip:
         default_user = os.getenv('CSV2PSQL_USER', '').strip()
         if default_user == '':
             default_user = None
@@ -203,16 +208,17 @@ def csv2psql(ifn, tablename,
     # pass 1
     _tbl = dict()
     # always create temporary table
+    print "-- ifn: %s" % ifn
     f = csv.DictReader(sys.stdin if ifn == '-' else open(ifn, 'rU'), restval='', delimiter=delimiter)
     _tbl = _sniffer(f, maxsniff, datatype)
 
-    # print >> fout, "BEGIN;\n"
+    print "-- _tbl: %s" % _tbl
 
-    if default_user is not None:
+    if default_user is not None and not skip:
         print >> fout, "SET ROLE", default_user, ";\n"
 
     # add schema as sole one in search path, and snip table name if starts with schema
-    if schema is not None:
+    if schema is not None and not skip:
         print >> fout, "SET search_path TO %s;" % (schema)
         if strip_prefix and tablename.startswith(schema):
             tablename = tablename[len(schema) + 1:]
@@ -223,23 +229,23 @@ def csv2psql(ifn, tablename,
     if force_utf8:
         print >> fout, "\\encoding UTF8\n"
 
-    if quiet:
+    if quiet and not skip:
         print >> fout, "SET client_min_messages TO ERROR;\n"
 
     #really create the temp schema
-    if create_table and is_merge:
+    if create_table and is_merge and not skip:
         _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, True)
-    elif create_table:  #legacy support
+    elif create_table and not skip:  #legacy support
         _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey)
 
-    if truncate_table and not load_data:
+    if truncate_table and not load_data and not skip:
         print >> fout, "TRUNCATE TABLE", tablename, ";"
 
     # pass 2
-    if load_data:
+    if load_data and not skip:
         _out_as_copy(fout, tablename, delimiter, _tbl, ifn)
 
-    if load_data and analyze_table:
+    if load_data and analyze_table and not skip:
         print >> fout, "ANALYZE", tablename, ";"
 
     #fix bad dates ints or stings to correct int format
@@ -255,15 +261,23 @@ def csv2psql(ifn, tablename,
         print >> fout, sqlgen.make_primary_key_w_join(tablename, key_name, keys)
 
     primary_key = pkey if pkey is not None else join_keys_key_name
+    if is_array(primary_key):
+        primary_key = primary_key[0]
+
+
     #take temporary table and merge it into a real table
-    if is_merge and primary_key is not None and is_dump:
+    if primary_key is not None and is_dump:
         if create_table and database_name:
             print >> fout, sqlgen.pg_dump(database_name, schema, tablename)
             #TODO re-order the primary_key to first column
 
+    if is_merge and primary_key is not None:
         print >> fout, sqlgen.merge(orig_tablename, _tbl, primary_key, tablename)
-
     return _tbl
+
+
+def is_array(var):
+    return isinstance(var, (list, tuple))
 
 
 def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, is_temp=False):
