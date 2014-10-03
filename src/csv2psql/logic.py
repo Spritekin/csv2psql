@@ -268,10 +268,10 @@ def csv2psql(ifn, tablename,
 
 def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, is_temp=False):
     temporary_str = ""
-    if not is_temp:
-        print >> fout, "DROP TABLE IF EXISTS", tablename, "CASCADE;" if cascade else ";"
-    else:
-        temporary_str = "TEMPORARY"
+    # if not is_temp:
+    print >> fout, "DROP TABLE IF EXISTS", tablename, "CASCADE;" if cascade else ";"
+    # else:
+    #     temporary_str = "TEMPORARY"
 
     print >> fout, "CREATE %s TABLE" % temporary_str, tablename, "(\n\t",
     cols = list()
