@@ -210,6 +210,9 @@ def csv2psql(ifn, tablename,
     # always create temporary table
     print "-- ifn: %s" % ifn
     f = csv.DictReader(sys.stdin if ifn == '-' else open(ifn, 'rU'), restval='', delimiter=delimiter)
+    mangled_field_names = []
+    for key in f.fieldnames:
+        mangled_field_names.append(mangle(key))
     _tbl = _sniffer(f, maxsniff, datatype)
 
     print "-- _tbl: %s" % _tbl
@@ -243,7 +246,7 @@ def csv2psql(ifn, tablename,
 
     # pass 2
     if load_data and not skip:
-        _out_as_copy(fout, tablename, delimiter, _tbl, ifn)
+        _out_as_copy(f, fout, tablename, delimiter, _tbl, ifn)
 
     if load_data and analyze_table and not skip:
         print >> fout, "ANALYZE", tablename, ";"
@@ -272,7 +275,8 @@ def csv2psql(ifn, tablename,
             #TODO re-order the primary_key to first column
 
     if is_merge and primary_key is not None:
-        print >> fout, sqlgen.merge(orig_tablename, _tbl, primary_key, tablename)
+        print "-- mangled_field_names: %s" % mangled_field_names
+        print >> fout, sqlgen.merge(mangled_field_names, orig_tablename, primary_key, tablename)
     return _tbl
 
 
@@ -331,9 +335,9 @@ def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_us
         print >> fout, "ALTER TABLE", tablename, "ADD UNIQUE (", ','.join(uniquekey), ");"
 
 
-def _out_as_copy(fout, tablename, delimiter, _tbl, ifn):
+def _out_as_copy(fields, fout, tablename, delimiter, _tbl, ifn):
     print >> fout, "\COPY %s FROM stdin NULL AS ''" % (tablename)
-    f = csv.DictReader(sys.stdin if ifn == '-' else open(ifn, 'rU'), delimiter=delimiter)
+    f = fields
     for row in f:
         # we have to ensure that we're cleanly reading the input data
         outrow = []

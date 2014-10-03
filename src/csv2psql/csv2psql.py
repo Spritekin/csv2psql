@@ -37,8 +37,8 @@ options include:
 
 --is_merge indicated to create a table with temp_ in front of the table name
 
---is_dump  uses pd_dump to possibly get a temp table's
-           schema (as long as is_merge = true && --key exists && --append is not present).
+--is_dump  uses pg_dump to possibly get a temp table's
+           schema (as long as --key exists && --append is not present).
            Lastly merging sql code is generated to merge a table with its temp_table.
 
 environment variables:

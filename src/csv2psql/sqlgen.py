@@ -39,7 +39,7 @@ LANGUAGE plpgsql;
 # tempTableName
 #
 _bulk_upsert_str = """
-BEGIN;
+BEGIN TRANSACTION;
 LOCK TABLE {perm_table} IN EXCLUSIVE MODE;
 
 UPDATE {perm_table}
@@ -48,12 +48,12 @@ FROM {temp_table}
 WHERE {perm_table}.{key} = {temp_table}.{key};
 
 INSERT INTO {perm_table}
-SELECT {perm_table}.{key} = {temp_table}.{key}
+SELECT {selects},{temp_table}.{key}
 FROM {temp_table}
 LEFT OUTER JOIN {perm_table} ON ({perm_table}.{key}= {temp_table}.{key})
 WHERE {perm_table}.{key} IS NULL;
 
-COMMIT;
+END TRANSACTION;
 """
 _date_str = """
 ALTER TABLE {tablename} ALTER COLUMN {col} TYPE DATE
@@ -84,7 +84,7 @@ def verify_dates(table_name, date_format, cols):
     not_nulls_str = " "
     for date in cols:
         not_nulls_str += date + " IS NOT NULL AND "
-    #remove last AND
+    # remove last AND
     not_nulls_str = not_nulls_str[:-4]
 
     return _verify_dates.format(
@@ -124,35 +124,46 @@ def _date(tablename, colname, dateformat):
     return _date_str.format(tablename=tablename, col=colname, dateformat=dateformat)
 
 
-def _make_set(tablename, tbl, primary_key, temp_tablename):
+def _make_set(fieldnames, primary_key, temp_tablename):
     str = ""
-    for key in tbl:
+    for key in fieldnames:
         if key != primary_key:
-            str = "{col} = {temp_table}.{col}".format(col=key, temp_table=temp_tablename) + "," + str
+            str += "{col} = {temp_table}.{col}".format(col=key, temp_table=temp_tablename) + ","
 
     return str[:-1]
 
 
-def bulk_upsert(tablename, tbl, primary_key, temp_tablename=''):
+def _make_selects(fieldnames, primary_key, temp_tablename):
+    str = ""
+    for col in fieldnames:
+        if col != primary_key:
+            str += "{temp_table}.{col}".format(col=col, temp_table=temp_tablename) + ","
+
+    return str[:-1]
+
+
+def bulk_upsert(fieldnames, tablename, primary_key, temp_tablename=''):
     if not temp_tablename:
         temp_tablename = "temp_" + tablename
-    sets = _make_set(tablename, tbl, primary_key, temp_tablename)
+    sets = _make_set(fieldnames, primary_key, temp_tablename)
+    selects = _make_selects(fieldnames, primary_key, temp_tablename)
     # print "sets: " + sets
     ret = _bulk_upsert_str.format(perm_table=tablename,
                                   temp_table=temp_tablename,
                                   sets=sets,
-                                  key=primary_key)
+                                  key=primary_key,
+                                  selects=selects)
     # print ret
     return ret
 
 
-def merge(tablename, tbl, primary_key, temp_tablename):
+def merge(fieldnames, tablename, primary_key, temp_tablename):
     print "-- tablename: %s" % tablename
-    print "-- tbl: %s" % tbl
+    print "-- fieldnames: %s" % fieldnames
     print "-- primary_key: %s" % primary_key
     print "-- temp_tablename: %s" % temp_tablename
 
-    return bulk_upsert(tablename, tbl, primary_key, temp_tablename)
+    return bulk_upsert(fieldnames, tablename, primary_key, temp_tablename)
 
 
 def _pg_dump_str(db_name, schema_name, table_name, option):
