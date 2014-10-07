@@ -70,7 +70,7 @@ def _psqlencode(v, dt):
 
     '''
     if v is None or v == '':
-        #if dt == str else '\\N'
+        # if dt == str else '\\N'
         return ''
 
     if dt == int:
@@ -183,8 +183,10 @@ def csv2psql(ifn, tablename,
              joinkeys=None,
              dates=None,
              is_dump=False,
-             make_primary_key_first=False):
-    #maybe copy?
+             make_primary_key_first=False,
+             serial=None,
+             timestamp=None):
+    # maybe copy?
     orig_tablename = tablename + ""
     skip = is_merge or is_dump
     print "-- skip: %s" % skip
@@ -236,11 +238,7 @@ def csv2psql(ifn, tablename,
     if quiet and not skip:
         print >> fout, "SET client_min_messages TO ERROR;\n"
 
-    #really create the temp schema
-    if create_table and is_merge and not skip:
-        _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, True)
-    elif create_table and not skip:  #legacy support
-        _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey)
+    _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial,timestamp)
 
     if truncate_table and not load_data and not skip:
         print >> fout, "TRUNCATE TABLE", tablename, ";"
@@ -262,6 +260,8 @@ def csv2psql(ifn, tablename,
     if joinkeys is not None:
         (keys, key_name) = joinkeys
         join_keys_key_name = key_name
+        print >> fout, sqlgen.count_dupes(keys, key_name, tablename)
+        # print >> fout, sqlgen.delete_dupes(keys, key_name, tablename)
         print >> fout, sqlgen.make_primary_key_w_join(tablename, key_name, keys)
 
     primary_key = pkey if pkey is not None else join_keys_key_name
@@ -278,6 +278,10 @@ def csv2psql(ifn, tablename,
     if is_merge and primary_key is not None:
         print "-- mangled_field_names: %s" % mangled_field_names
         print "-- make_primary_key_first %s" % make_primary_key_first
+        if serial is not None:
+            mangled_field_names.append(serial)
+        if timestamp is not None:
+            mangled_field_names.append(timestamp)
         print >> fout, sqlgen.merge(mangled_field_names, orig_tablename,
                                     primary_key, make_primary_key_first, tablename)
     return _tbl
@@ -287,12 +291,10 @@ def is_array(var):
     return isinstance(var, (list, tuple))
 
 
-def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, is_temp=False):
+def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial=None, timestamp=None):
     temporary_str = ""
-    # if not is_temp:
+
     print >> fout, "DROP TABLE IF EXISTS", tablename, "CASCADE;" if cascade else ";"
-    # else:
-    #     temporary_str = "TEMPORARY"
 
     print >> fout, "CREATE %s TABLE" % temporary_str, tablename, "(\n\t",
     cols = list()
@@ -327,11 +329,17 @@ def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_us
         if not default_to_null:
             sqldt += " NOT NULL"
         cols.append('%s %s' % (_psql_identifier(_k), sqldt))
+    if serial is not None:
+        cols.append('%s %s' % (serial, "SERIAL"))
+    if timestamp is not None:
+        cols.append('%s timestamp default current_timestamp' % timestamp)
 
     print >> fout, ",\n\t".join(cols)
     print >> fout, ");"
     if default_user is not None:
         print >> fout, "ALTER TABLE", tablename, "OWNER TO", default_user, ";"
+    # TODO remove as this is basically duplicated in joinKeys, also pKey looks to never have
+    # been flushed out, this is the only part that does anything, the copy part does nothing on pkey
     if pkey is not None:
         print >> fout, "ALTER TABLE", tablename, "ADD PRIMARY KEY (", ','.join(pkey), ");"
     if uniquekey is not None:

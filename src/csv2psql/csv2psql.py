@@ -26,7 +26,7 @@ options include:
 --dumptype=type use type copy or sql (COPY is PSQL COPY, SQL is PURE INSERT/UPDATES)
 
 --joinkeys= keys[key1,key2]:keyname
-                Array of column name delimiteed by commas : to new key_name
+                Array of column name delimited by commas : to new key_name
 
 --dates=[keys1,key2]:format
         comma delimited list of keys with a date format
@@ -40,6 +40,10 @@ options include:
 --is_dump  uses pg_dump to possibly get a temp table's
            schema (as long as --key exists && --append is not present).
            Lastly merging sql code is generated to merge a table with its temp_table.
+
+--serial=name add a column that self generates itself an id of type SERIAl
+
+--timestamp=name add a column of timestamp which will give a time when the data was inserted
 
 --primaryfirst=bool defaults to false
 
@@ -100,7 +104,8 @@ def main(argv=None):
                                            "sniff=", "delimiter=", "datatype=",
                                            "role=", "is_merge=", "joinkeys=",
                                            "dates=", "tablename=", "databasename=",
-                                           "is_dump=", "is_merge=","primaryfirst="])
+                                           "is_dump=", "is_merge=","primaryfirst=,serial=",
+                                           "timestamp="])
         for o, a in opts:
             if o in ("--version"):
                 print __version__
@@ -162,6 +167,10 @@ def main(argv=None):
                 flags["is_dump"] = True if a.lower() == 'true' else False
             elif o in ("--primaryfirst"):
                 flags["make_primary_key_first"] = True if a.lower() == 'true' else False
+            elif o in ("--serial"):
+                flags["serial"] = a.lower()
+            elif o in ("--timestamp"):
+                flags["timestamp"] = a.lower()
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 
