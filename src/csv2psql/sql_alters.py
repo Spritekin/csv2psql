@@ -1,6 +1,7 @@
 from textwrap import dedent
 from os import popen
 from sql_alter_strings import *
+import logger
 
 __author__ = 'Nicholas McCready'
 
@@ -74,7 +75,8 @@ def _make_key_deletion_set(fieldnames, primary_key):
 
 def delete_dupes(fieldnames, primary_key, temp_tablename, serial, debug=False):
     if debug:
-        print "-- delete dupes"
+        logger.debug(True, "-- delete dupes")
+
     obj = dupes_clause(fieldnames, primary_key, temp_tablename, serial)
     cols = ""
     specific_cols = ""
@@ -117,7 +119,7 @@ def dupes_clause(fieldnames, primary_key, temp_tablename, serial):
 
 def count_dupes(fieldnames, primary_key, temp_tablename, serial, debug=False):
     if debug:
-        print "-- count dupes"
+        logger.debug(True, "-- count dupes")
     obj = dupes_clause(fieldnames, primary_key, temp_tablename, serial)
     return count_dups_str.format(
         tablename=temp_tablename,
@@ -154,23 +156,22 @@ def bulk_upsert(fieldnames, tablename, primary_key, make_primary_first, temp_tab
     sets = _make_set(fieldnames, primary_key, temp_tablename, make_primary_first)
     selects = _make_selects(fieldnames, primary_key, temp_tablename, make_primary_first)
     cols = _make_selects(fieldnames, primary_key, temp_tablename, make_primary_first, True)
-    # print "sets: " + sets
+
     ret = bulk_upsert_str.format(perm_table=tablename,
                                  cols=cols,
                                  temp_table=temp_tablename,
                                  sets=sets,
                                  key=primary_key,
                                  selects=selects)
-    # print ret
     return ret
 
 
 def merge(fieldnames, tablename, primary_key, make_primary_first, temp_tablename, do_log=False):
     if do_log:
-        print "-- tablename: %s" % tablename
-        print "-- fieldnames: %s" % fieldnames
-        print "-- primary_key: %s" % primary_key
-        print "-- temp_tablename: %s" % temp_tablename
+        logger.debug(True, "-- tablename: %s" % tablename)
+        logger.debug(True, "-- fieldnames: %s" % fieldnames)
+        logger.debug(True, "-- primary_key: %s" % primary_key)
+        logger.debug(True, "-- temp_tablename: %s" % temp_tablename)
 
     return bulk_upsert(fieldnames, tablename, primary_key, make_primary_first, temp_tablename)
 

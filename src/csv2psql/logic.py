@@ -8,6 +8,7 @@ import sql_alters
 import sql_procedures
 import sql_triggers
 from column import *
+import logger
 
 # TODO: write spec
 def _psql_identifier(s):
@@ -96,8 +97,8 @@ def _psqlencode(v, dt):
 def _sniffer(f, maxsniff=-1, datatype={}):
     '''sniffs out data types'''
     _tbl = dict()
-    print "-- fieldnames: %s" % f.fieldnames
-    print "-- datatype: %s" % datatype
+    logger.info(True, "-- fieldnames: %s" % f.fieldnames)
+    logger.info(True, "-- datatype: %s" % datatype)
     # initialize data types
     for k in f.fieldnames:
         _k = mangle(k)
@@ -193,7 +194,8 @@ def csv2psql(ifn, tablename,
     # maybe copy?
     orig_tablename = tablename + ""
     skip = is_merge or is_dump
-    print "-- skip: %s" % skip
+
+    logger.info(True, "-- skip: %s" % skip)
 
     if skip:
         tablename = "temp_" + tablename
@@ -215,14 +217,14 @@ def csv2psql(ifn, tablename,
     # pass 1
     _tbl = dict()
     # always create temporary table
-    print "-- ifn: %s" % ifn
+    logger.info(True, "-- original csv: %s" % ifn)
     f = csv.DictReader(sys.stdin if ifn == '-' else open(ifn, 'rU'), restval='', delimiter=delimiter)
     mangled_field_names = []
     for key in f.fieldnames:
         mangled_field_names.append(mangle(key))
     _tbl = _sniffer(f, maxsniff, datatype)
 
-    print "-- _tbl: %s" % _tbl
+    logger.info(True, "-- _tbl: %s" % _tbl)
 
     if default_user is not None and not skip:
         print >> fout, "SET ROLE", default_user, ";\n"
@@ -243,7 +245,7 @@ def csv2psql(ifn, tablename,
         print >> fout, "SET client_min_messages TO ERROR;\n"
 
     if create_table and not skip:
-        print "-- CREATING TABLE"
+        logger.info(True, "-- CREATING TABLE")
         _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial,
                       timestamp)
         print >> fout, sql_procedures.modified_time_procedure.procedure_str
@@ -287,8 +289,8 @@ def csv2psql(ifn, tablename,
             # TODO re-order the primary_key to first column
 
     if is_merge and primary_key is not None:
-        print "-- mangled_field_names: %s" % mangled_field_names
-        print "-- make_primary_key_first %s" % make_primary_key_first
+        logger.info(True, "-- mangled_field_names: %s" % mangled_field_names)
+        logger.info(True, "-- make_primary_key_first %s" % make_primary_key_first)
 
         print >> fout, sql_triggers.modified_time_trigger(orig_tablename)
 
@@ -315,7 +317,7 @@ def additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_
         cols_to_add_later.append(Column(timestamp, type_str, "default current_timestamp"))
         mangled_field_names.append(type_str)
 
-    print "-- cols_to_add_later: %s" % cols_to_add_later
+    logger.info(True, "-- cols_to_add_later: %s" % cols_to_add_later)
     if len(cols_to_add_later) > 0 and not is_merge:
         print >> fout, sql_alters.add_cols(cols_to_add_later, tablename)
 
@@ -376,7 +378,7 @@ def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_us
         print >> fout, "ALTER TABLE", tablename, "ADD UNIQUE (", ','.join(uniquekey), ");"
 
 
-def _out_as_copy(fields, fout, tablename, delimiter, _tbl, ifn):
+def _out_as_copy(fields, fout, tablename, delimiter, _tbl, ifn, exit_on_error=False):
     """
     :param fields:
     :param fout: fileout
@@ -384,6 +386,7 @@ def _out_as_copy(fields, fout, tablename, delimiter, _tbl, ifn):
     :param delimiter: not used but could be if we were just using the csv
     :param _tbl: hashmap holding datatypes and values to be checked for integrity
     :param ifn: original csv name
+    :param exit_on_error:  If a row fails to pass a data type if this is true the import is aborted. Else we skip the row.
     :return: None
 
     Purpose is to ensure data integrity by checking original csv data against the intended type for a col/row.
@@ -412,10 +415,14 @@ def _out_as_copy(fields, fout, tablename, delimiter, _tbl, ifn):
                     dt = str
                 outrow.append(_psqlencode(row[k], dt))
             except ValueError, e:
-                print >> sys.stderr, 'ERROR:', ifn
-                print >> sys.stderr, k, _k, type(e), e
-                print >> sys.stderr, row
-                sys.exit(1)
+                logger.error(True, 'ERROR: %s' % ifn)
+                details = {"k": k, "_k": _k, "error_type": type(e), "error": e}
+
+                logger.error(True, '', '', details)
+                logger.error(True, "row: %s" % row)
+                if exit_on_error:
+                    logger.critical(True,"exit_on_error for row is true, exiting!")
+                    sys.exit(1)
         print >> fout, "\t".join(outrow)
     print >> fout, "\\."
 
