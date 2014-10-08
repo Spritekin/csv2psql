@@ -47,6 +47,8 @@ options include:
 
 --primaryfirst=bool defaults to false
 
+--do_add_cols - indicator to add modified_time, and other cols (timestamp,serial) . To delay till last run
+
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
 CSV2PSQL_ROLE        default value for --role
@@ -105,7 +107,7 @@ def main(argv=None):
                                            "role=", "is_merge=", "joinkeys=",
                                            "dates=", "tablename=", "databasename=",
                                            "is_dump=", "is_merge=","primaryfirst=","serial=",
-                                           "timestamp="])
+                                           "timestamp=","do_add_cols="])
         for o, a in opts:
             if o in ("--version"):
                 print __version__
@@ -171,6 +173,8 @@ def main(argv=None):
                 flags["serial"] = a.lower()
             elif o in ("--timestamp"):
                 flags["timestamp"] = a.lower()
+            elif o in ("--do_add_cols"):
+                flags["do_add_cols"] = True if a.lower() == 'true' else False
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 

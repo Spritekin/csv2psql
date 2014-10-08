@@ -6,31 +6,6 @@ from textwrap import dedent
 # - key_name =  key/index name
 # - indexes (column names)
 # - values
-merge_function_str = """
-CREATE FUNCTION merge({column_types}) RETURNS VOID AS
-$$
-BEGIN
-    LOOP
-        -- first try to update the key where $1 is key
-        UPDATE {table_name} SET {sets} WHERE {key_name} = $1;
-        IF found THEN
-            RETURN;
-        END IF;
-        -- not there, so try to insert the key
-        -- if someone else inserts the same key concurrently,
-        -- we could get a unique-key failure
-        BEGIN
-            INSERT INTO {table_name}({indexes}) VALUES ({values});
-            RETURN;
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing, and loop to try the UPDATE again
-        END;
-    END LOOP;
-END;
-$$
-LANGUAGE plpgsql;
-"""
-
 
 # tempTableName
 #

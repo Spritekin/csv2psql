@@ -1,6 +1,6 @@
 from textwrap import dedent
 from os import popen
-from sqlstrings import *
+from sql_alter_strings import *
 
 __author__ = 'Nicholas McCready'
 

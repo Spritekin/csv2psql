@@ -1,5 +1,5 @@
-from csv2psql import reservedwords, mangle, sqlgen, column
-from csv2psql.sqlstrings import *
+from csv2psql import reservedwords, mangle, sql_alters, column
+from csv2psql.sql_alter_strings import *
 import unittest
 from should_dsl import should, should_not
 from textwrap import dedent
@@ -14,9 +14,9 @@ class Csv2psqlSpec(unittest.TestCase):
         mangle.mangle_table | should_not | equal_to(None)
 
 
-class SqlGenSpec(unittest.TestCase):
+class SqlAlterSpec(unittest.TestCase):
     def test_date(self):
-        sqlgen._date("db", "col1", "YYYY") | should | equal_to(dedent("""
+        sql_alters._date("db", "col1", "YYYY") | should | equal_to(dedent("""
         ALTER TABLE db ALTER COLUMN col1 TYPE DATE
         USING
         CASE
@@ -28,15 +28,15 @@ class SqlGenSpec(unittest.TestCase):
         END;"""))
 
     def test_make_set(self):
-        sqlgen._make_set(["one", "two"], "primary", "temp", True) | should | equal_to(
+        sql_alters._make_set(["one", "two"], "primary", "temp", True) | should | equal_to(
             "primary = temp.primary,one = temp.one,two = temp.two")
 
     def test_join_keys(self):
-        sqlgen._join_keys(['one', 'two', 'three']) \
+        sql_alters._join_keys(['one', 'two', 'three']) \
         | should | equal_to("one || '-' || two || '-' || three")
 
     def test_make_primary_key_w_join(self):
-        sqlgen.make_primary_key_w_join("db", "new_key", ['one', 'two', 'three']) | should | \
+        sql_alters.make_primary_key_w_join("db", "new_key", ['one', 'two', 'three']) | should | \
         equal_to(dedent("""
         ALTER TABLE db ADD COLUMN new_key VARCHAR(200);
         UPDATE db SET new_key = (one || '-' || two || '-' || three);
@@ -50,7 +50,7 @@ class SqlGenSpec(unittest.TestCase):
         """))
 
     def test_merge(self):
-        sqlgen.merge(["one", "two"],
+        sql_alters.merge(["one", "two"],
                      "table1",
                      "new_key",
                      True,
@@ -75,18 +75,18 @@ class SqlGenSpec(unittest.TestCase):
         ))
 
     def test_pg_dump_str(self):
-        sqlgen.pg_dump_str("db", "schema", "table1", "-s") \
+        sql_alters.pg_dump_str("db", "schema", "table1", "-s") \
         | should | equal_to("pg_dump db --schema schema --table table1 -s")
 
     def test_verify_dates(self):
-        sqlgen.verify_dates("sometable", "YYYY", ['purchased', 'sold']) | should | equal_to(
+        sql_alters.verify_dates("sometable", "YYYY", ['purchased', 'sold']) | should | equal_to(
             dedent("""
                     SELECT COUNT(*) AS YYYY FROM sometable
                     WHERE purchased IS NOT NULL AND sold IS NOT NULL ;"""))
 
 
     def test_delete_dupes(self):
-        sqlgen.delete_dupes(["one", "two"], "key", "table1", "serial") | should | equal_to(dedent(
+        sql_alters.delete_dupes(["one", "two"], "key", "table1", "serial") | should | equal_to(dedent(
             """
             DELETE FROM table1
             WHERE (one, two, serial) IN (
@@ -101,7 +101,7 @@ class SqlGenSpec(unittest.TestCase):
         ))
 
     def test_count_dupes(self):
-        sqlgen.count_dupes(["one", "two"], "key", "table1", "serial") | should | equal_to(dedent(
+        sql_alters.count_dupes(["one", "two"], "key", "table1", "serial") | should | equal_to(dedent(
             """
             SELECT COUNT(*) AS DUPES
             FROM table1 AS t1, table1 AS t2
@@ -112,7 +112,7 @@ class SqlGenSpec(unittest.TestCase):
 
     def test_add_col(self):
         col = column.Column("crap", "SERIAL", "loto crap")
-        sqlgen.add_col(col.name, col.type, "table1", col.additional) \
+        sql_alters.add_col(col.name, col.type, "table1", col.additional) \
         | should | equal_to(dedent("""
             ALTER TABLE table1 ADD COLUMN crap SERIAL loto crap;
             """

@@ -4,7 +4,9 @@ import os.path
 import csv
 from mangle import *
 from reservedwords import *
-import sqlgen
+import sql_alters
+import  sql_procedures
+import sql_triggers
 from column import *
 
 # TODO: write spec
@@ -186,7 +188,8 @@ def csv2psql(ifn, tablename,
              is_dump=False,
              make_primary_key_first=False,
              serial=None,
-             timestamp=None):
+             timestamp=None,
+             do_add_cols=False):
     # maybe copy?
     orig_tablename = tablename + ""
     skip = is_merge or is_dump
@@ -243,6 +246,8 @@ def csv2psql(ifn, tablename,
         print "-- CREATING TABLE"
         _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial,
                       timestamp)
+        print >> fout, sql_procedures.modified_time_procedure.procedure_str
+        # print >> fout, sql_triggers.modified_time_trigger(tablename)
 
     if truncate_table and not load_data and not skip:
         print >> fout, "TRUNCATE TABLE", tablename, ";"
@@ -257,9 +262,9 @@ def csv2psql(ifn, tablename,
     # fix bad dates ints or stings to correct int format
     if dates is not None:
         for date_format, cols in dates.iteritems():
-            print >> fout, sqlgen.dates(tablename, cols, date_format)
-
-    additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge)
+            print >> fout, sql_alters.dates(tablename, cols, date_format)
+    if do_add_cols:
+        additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge)
 
     # take cols and merge them into one primary_key
     join_keys_key_name = None
@@ -267,9 +272,9 @@ def csv2psql(ifn, tablename,
         (keys, key_name) = joinkeys
         join_keys_key_name = key_name
         if serial is not None:
-            print >> fout, sqlgen.count_dupes(keys, key_name, tablename, serial, True)
-            print >> fout, sqlgen.delete_dupes(keys, key_name, tablename, serial, True)
-        print >> fout, sqlgen.make_primary_key_w_join(tablename, key_name, keys)
+            print >> fout, sql_alters.count_dupes(keys, key_name, tablename, serial, True)
+            print >> fout, sql_alters.delete_dupes(keys, key_name, tablename, serial, True)
+        print >> fout, sql_alters.make_primary_key_w_join(tablename, key_name, keys)
 
     primary_key = pkey if pkey is not None else join_keys_key_name
     if is_array(primary_key):
@@ -278,20 +283,28 @@ def csv2psql(ifn, tablename,
     # take temporary table and merge it into a real table
     if primary_key is not None and is_dump:
         if create_table and database_name:
-            print >> fout, sqlgen.pg_dump(database_name, schema, tablename)
+            print >> fout, sql_alters.pg_dump(database_name, schema, tablename)
             #TODO re-order the primary_key to first column
 
     if is_merge and primary_key is not None:
         print "-- mangled_field_names: %s" % mangled_field_names
         print "-- make_primary_key_first %s" % make_primary_key_first
 
-        print >> fout, sqlgen.merge(mangled_field_names, orig_tablename,
+        print >> fout, sql_triggers.modified_time_trigger(orig_tablename)
+
+        print >> fout, sql_alters.merge(mangled_field_names, orig_tablename,
                                     primary_key, make_primary_key_first, tablename)
     return _tbl
 
 
 def additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge):
     cols_to_add_later = []
+
+    #managed by procedure / function
+    mod_time = Column("modified_time", "timestamp".upper(), "default current_timestamp")
+    cols_to_add_later.append(mod_time)
+    mangled_field_names.append(mod_time.type)
+
     if serial is not None:
         type_str = "SERIAL".upper()
         cols_to_add_later.append(Column(serial, type_str))
@@ -304,7 +317,7 @@ def additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_
 
     print "-- cols_to_add_later: %s" % cols_to_add_later
     if len(cols_to_add_later) > 0 and not is_merge:
-        print >> fout, sqlgen.add_cols(cols_to_add_later, tablename)
+        print >> fout, sql_alters.add_cols(cols_to_add_later, tablename)
 
 def is_array(var):
     return isinstance(var, (list, tuple))
