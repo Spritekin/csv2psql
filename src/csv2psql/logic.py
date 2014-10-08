@@ -396,6 +396,7 @@ def _out_as_copy(fields, fout, tablename, delimiter, _tbl, ifn, exit_on_error=Fa
     slower as it require much more file IO when we already have the data in the CSV file itself. (Which PSQL can handle).
     There fore this is basically duplicating an existing CSV within a *.sql file.
 
+    TODO:
     An alternate approach would be to remove the invalid rows from an existing (or copied) csv. The rational here is there
     would likely be fewer errors than successes. Thus lis I/O . Thus the \COPY statement here would point to a *.csv file
     and have the delimiter and Null checks attached.
