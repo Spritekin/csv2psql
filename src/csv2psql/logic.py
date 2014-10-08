@@ -5,7 +5,7 @@ import csv
 from mangle import *
 from reservedwords import *
 import sql_alters
-import  sql_procedures
+import sql_procedures
 import sql_triggers
 from column import *
 
@@ -284,7 +284,7 @@ def csv2psql(ifn, tablename,
     if primary_key is not None and is_dump:
         if create_table and database_name:
             print >> fout, sql_alters.pg_dump(database_name, schema, tablename)
-            #TODO re-order the primary_key to first column
+            # TODO re-order the primary_key to first column
 
     if is_merge and primary_key is not None:
         print "-- mangled_field_names: %s" % mangled_field_names
@@ -293,14 +293,14 @@ def csv2psql(ifn, tablename,
         print >> fout, sql_triggers.modified_time_trigger(orig_tablename)
 
         print >> fout, sql_alters.merge(mangled_field_names, orig_tablename,
-                                    primary_key, make_primary_key_first, tablename)
+                                        primary_key, make_primary_key_first, tablename)
     return _tbl
 
 
 def additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge):
     cols_to_add_later = []
 
-    #managed by procedure / function
+    # managed by procedure / function
     mod_time = Column("modified_time", "timestamp".upper(), "default current_timestamp")
     cols_to_add_later.append(mod_time)
     mangled_field_names.append(mod_time.type)
@@ -318,6 +318,7 @@ def additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_
     print "-- cols_to_add_later: %s" % cols_to_add_later
     if len(cols_to_add_later) > 0 and not is_merge:
         print >> fout, sql_alters.add_cols(cols_to_add_later, tablename)
+
 
 def is_array(var):
     return isinstance(var, (list, tuple))
@@ -376,6 +377,26 @@ def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_us
 
 
 def _out_as_copy(fields, fout, tablename, delimiter, _tbl, ifn):
+    """
+    :param fields:
+    :param fout: fileout
+    :param tablename:
+    :param delimiter: not used but could be if we were just using the csv
+    :param _tbl: hashmap holding datatypes and values to be checked for integrity
+    :param ifn: original csv name
+    :return: None
+
+    Purpose is to ensure data integrity by checking original csv data against the intended type for a col/row.
+
+    Approach:
+    Output only valid rows that have the correct types. This is an easier approach from a coding standpoint, however it is
+    slower as it require much more file IO when we already have the data in the CSV file itself. (Which PSQL can handle).
+    There fore this is basically duplicating an existing CSV within a *.sql file.
+
+    An alternate approach would be to remove the invalid rows from an existing (or copied) csv. The rational here is there
+    would likely be fewer errors than successes. Thus lis I/O . Thus the \COPY statement here would point to a *.csv file
+    and have the delimiter and Null checks attached.
+    """
     print >> fout, "\COPY %s FROM stdin NULL AS ''" % (tablename)
     f = fields
     for row in f:
