@@ -104,7 +104,7 @@ def main(argv=None):
                                            "sniff=", "delimiter=", "datatype=",
                                            "role=", "is_merge=", "joinkeys=",
                                            "dates=", "tablename=", "databasename=",
-                                           "is_dump=", "is_merge=","primaryfirst=,serial=",
+                                           "is_dump=", "is_merge=","primaryfirst=","serial=",
                                            "timestamp="])
         for o, a in opts:
             if o in ("--version"):

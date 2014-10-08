@@ -5,6 +5,7 @@ import csv
 from mangle import *
 from reservedwords import *
 import sqlgen
+from column import *
 
 # TODO: write spec
 def _psql_identifier(s):
@@ -238,7 +239,10 @@ def csv2psql(ifn, tablename,
     if quiet and not skip:
         print >> fout, "SET client_min_messages TO ERROR;\n"
 
-    _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial,timestamp)
+    if create_table and not skip:
+        print "-- CREATING TABLE"
+        _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial,
+                      timestamp)
 
     if truncate_table and not load_data and not skip:
         print >> fout, "TRUNCATE TABLE", tablename, ";"
@@ -250,26 +254,28 @@ def csv2psql(ifn, tablename,
     if load_data and analyze_table and not skip:
         print >> fout, "ANALYZE", tablename, ";"
 
-    #fix bad dates ints or stings to correct int format
+    # fix bad dates ints or stings to correct int format
     if dates is not None:
         for date_format, cols in dates.iteritems():
             print >> fout, sqlgen.dates(tablename, cols, date_format)
 
-    #take cols and merge them into one primary_key
+    additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge)
+
+    # take cols and merge them into one primary_key
     join_keys_key_name = None
     if joinkeys is not None:
         (keys, key_name) = joinkeys
         join_keys_key_name = key_name
-        print >> fout, sqlgen.count_dupes(keys, key_name, tablename)
-        # print >> fout, sqlgen.delete_dupes(keys, key_name, tablename)
+        if serial is not None:
+            print >> fout, sqlgen.count_dupes(keys, key_name, tablename, serial, True)
+            print >> fout, sqlgen.delete_dupes(keys, key_name, tablename, serial, True)
         print >> fout, sqlgen.make_primary_key_w_join(tablename, key_name, keys)
 
     primary_key = pkey if pkey is not None else join_keys_key_name
     if is_array(primary_key):
         primary_key = primary_key[0]
 
-
-    #take temporary table and merge it into a real table
+    # take temporary table and merge it into a real table
     if primary_key is not None and is_dump:
         if create_table and database_name:
             print >> fout, sqlgen.pg_dump(database_name, schema, tablename)
@@ -278,20 +284,34 @@ def csv2psql(ifn, tablename,
     if is_merge and primary_key is not None:
         print "-- mangled_field_names: %s" % mangled_field_names
         print "-- make_primary_key_first %s" % make_primary_key_first
-        if serial is not None:
-            mangled_field_names.append(serial)
-        if timestamp is not None:
-            mangled_field_names.append(timestamp)
+
         print >> fout, sqlgen.merge(mangled_field_names, orig_tablename,
                                     primary_key, make_primary_key_first, tablename)
     return _tbl
 
 
+def additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge):
+    cols_to_add_later = []
+    if serial is not None:
+        type_str = "SERIAL".upper()
+        cols_to_add_later.append(Column(serial, type_str))
+        mangled_field_names.append(type_str)
+
+    if timestamp is not None:
+        type_str = "timestamp".upper()
+        cols_to_add_later.append(Column(timestamp, type_str, "default current_timestamp"))
+        mangled_field_names.append(type_str)
+
+    print "-- cols_to_add_later: %s" % cols_to_add_later
+    if len(cols_to_add_later) > 0 and not is_merge:
+        print >> fout, sqlgen.add_cols(cols_to_add_later, tablename)
+
 def is_array(var):
     return isinstance(var, (list, tuple))
 
 
-def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial=None, timestamp=None):
+def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial=None,
+                  timestamp=None):
     temporary_str = ""
 
     print >> fout, "DROP TABLE IF EXISTS", tablename, "CASCADE;" if cascade else ";"
@@ -329,10 +349,6 @@ def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_us
         if not default_to_null:
             sqldt += " NOT NULL"
         cols.append('%s %s' % (_psql_identifier(_k), sqldt))
-    if serial is not None:
-        cols.append('%s %s' % (serial, "SERIAL"))
-    if timestamp is not None:
-        cols.append('%s timestamp default current_timestamp' % timestamp)
 
     print >> fout, ",\n\t".join(cols)
     print >> fout, ");"

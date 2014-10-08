@@ -43,7 +43,7 @@ SET {sets}
 FROM {temp_table}
 WHERE {perm_table}.{key} = {temp_table}.{key};
 
-INSERT INTO {perm_table}
+INSERT INTO {perm_table} ({cols})
 SELECT DISTINCT {selects}
 FROM {temp_table}
 LEFT OUTER JOIN {perm_table} ON ({perm_table}.{key}= {temp_table}.{key})
@@ -61,6 +61,11 @@ CASE
 ELSE
   NULL
 END;"""
+
+
+add_col_str="""
+ALTER TABLE {tablename} ADD COLUMN {col} {type} {additional};
+"""
 
 join_keys_primary_str = """
 ALTER TABLE {tablename} ADD COLUMN {primary_key} VARCHAR(200);
@@ -84,12 +89,12 @@ WHERE {difference}
 delete_dups_str = """
 DELETE FROM {tablename}
 WHERE ({cols}) IN (
-SELECT {cols}
+SELECT {specific_cols}
 {select_statement}
 );
 """
 
-count_dups_str = "\nSELECT COUNT(*)" + select_dupes_str + ";"
+count_dups_str = "\nSELECT COUNT(*) AS DUPES" + select_dupes_str + ";"
 
 verify_dates_str = dedent("""
 SELECT COUNT(*) AS {date_format} FROM {tablename}

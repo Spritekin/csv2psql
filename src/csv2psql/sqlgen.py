@@ -56,7 +56,8 @@ def _make_set(fieldnames, primary_key, temp_tablename, make_primary_first):
     str = ""
     array = _get_fieldnames_w_key(fieldnames, primary_key, make_primary_first)
     for key in array:
-        str += "{col} = {temp_table}.{col}".format(col=key, temp_table=temp_tablename) + ","
+        if key != "SERIAL" and key != "TIMESTAMP":
+            str += "{col} = {temp_table}.{col}".format(col=key, temp_table=temp_tablename) + ","
 
     return str[:-1]
 
@@ -71,16 +72,22 @@ def _make_key_deletion_set(fieldnames, primary_key):
     return str[:-4] + ";"
 
 
-def delete_dupes(fieldnames, primary_key, temp_tablename, serial):
+def delete_dupes(fieldnames, primary_key, temp_tablename, serial, debug=False):
+    if debug:
+        print "-- delete dupes"
     obj = dupes_clause(fieldnames, primary_key, temp_tablename, serial)
     cols = ""
+    specific_cols = ""
+
     obj['filtered_keys'].append(serial)
     # print obj['filtered_keys']
     for key in obj['filtered_keys']:
         cols += "%s, " % key
+        specific_cols += "t1.%s, " % key
     cols = cols[:-2]
+    specific_cols = specific_cols[:-2]
 
-    this_select_str=select_dupes_str.format(
+    this_select_str = select_dupes_str.format(
         tablename=temp_tablename,
         difference=obj['diff'],
         clause=obj['clause']
@@ -89,6 +96,7 @@ def delete_dupes(fieldnames, primary_key, temp_tablename, serial):
     return delete_dups_str.format(
         tablename=temp_tablename,
         cols=cols,
+        specific_cols=specific_cols,
         select_statement=this_select_str
     )
 
@@ -107,7 +115,9 @@ def dupes_clause(fieldnames, primary_key, temp_tablename, serial):
     return {'clause': clause, 'diff': diff, 'filtered_keys': keys}
 
 
-def count_dupes(fieldnames, primary_key, temp_tablename, serial):
+def count_dupes(fieldnames, primary_key, temp_tablename, serial, debug=False):
+    if debug:
+        print "-- count dupes"
     obj = dupes_clause(fieldnames, primary_key, temp_tablename, serial)
     return count_dups_str.format(
         tablename=temp_tablename,
@@ -126,12 +136,15 @@ def _get_fieldnames_w_key(fieldnames, primary_key, make_primary_first):
     return array
 
 
-def _make_selects(fieldnames, primary_key, temp_tablename, make_primary_first):
+def _make_selects(fieldnames, primary_key, temp_tablename, make_primary_first, just_cols=False):
     str = ""
     array = _get_fieldnames_w_key(fieldnames, primary_key, make_primary_first)
     for col in array:
-        str += "{temp_table}.{col}".format(col=col, temp_table=temp_tablename) + ","
-
+        if col != "SERIAL" and col != "TIMESTAMP":
+            if just_cols:
+                str += "{col}".format(col=col) + ","
+            else:
+                str += "{temp_table}.{col}".format(col=col, temp_table=temp_tablename) + ","
     return str[:-1]
 
 
@@ -140,8 +153,10 @@ def bulk_upsert(fieldnames, tablename, primary_key, make_primary_first, temp_tab
         temp_tablename = "temp_" + tablename
     sets = _make_set(fieldnames, primary_key, temp_tablename, make_primary_first)
     selects = _make_selects(fieldnames, primary_key, temp_tablename, make_primary_first)
+    cols = _make_selects(fieldnames, primary_key, temp_tablename, make_primary_first, True)
     # print "sets: " + sets
     ret = bulk_upsert_str.format(perm_table=tablename,
+                                 cols=cols,
                                  temp_table=temp_tablename,
                                  sets=sets,
                                  key=primary_key,
@@ -168,3 +183,18 @@ def pg_dump(db_name, schema_name, table_name, option="-s"):
     """
     cmd = pg_dump_str(db_name, schema_name, table_name, option)
     return popen(cmd).read()
+
+
+def add_col(name, type, tablename, additional=""):
+    return add_col_str.format(
+        tablename=tablename,
+        col=name, type=type,
+        additional=additional
+    )
+
+
+def add_cols(cols, tablename):
+    str = ""
+    for col in cols:
+        str += add_col(col.name, col.type, tablename, col.additional)
+    return str
