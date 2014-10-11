@@ -1,10 +1,8 @@
-from __future__ import print_function
 import logger
 import sys
 from shutil import copyfile
 from mangle import *
-import fileinput
-
+from bad_lines import remove_bad_line_number
 
 
 def _psqlencode(v, dt):
@@ -94,7 +92,7 @@ def out_as_copy_stdin(fields, fout, tablename, delimiter, _tbl, ifn, exit_on_err
     print >> fout, "\\."
 
 
-def out_as_copy_csv(fields, fout, tablename, delimiter, _tbl, ifn, exit_on_error=False):
+def out_as_copy_csv(fields, fout, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
     """
     :param fields:
     :param fout: fileout
@@ -115,10 +113,10 @@ def out_as_copy_csv(fields, fout, tablename, delimiter, _tbl, ifn, exit_on_error
     and have the delimiter and Null checks attached.
     """
     # backup original file (to look for errors)
-    copyfile(ifn, "orig_" + ifn)
+    copyfile(csvfilename, "orig_" + csvfilename)
     nullStr = "NULL AS ''"
-    print >> fout, "\COPY {tablename} FROM '{csvfilename}' {nullhandle} DELIMITER '{delimiter}' CSV;" \
-        .format(tablename=tablename, nullhandle=nullStr, delimiter=delimiter)
+    print >> fout, "\COPY {tablename} FROM '{csvfilename}' {nullhandle} DELIMITER '{delimiter}' CSV;".format(
+        csvfilename=csvfilename, tablename=tablename, nullhandle=nullStr, delimiter=delimiter)
     f = fields
     for row in f:
         # we have to ensure that we're cleanly reading the input data
@@ -131,9 +129,9 @@ def out_as_copy_csv(fields, fout, tablename, delimiter, _tbl, ifn, exit_on_error
                     dt = _tbl[_k]['type']
                 else:
                     dt = str
-                outrow.append(_psqlencode(row[k], dt))
+                _psqlencode(row[k], dt)
             except ValueError, e:
-                logger.error(False, 'ERROR: %s' % ifn)
+                logger.error(False, 'ERROR: %s' % csvfilename)
                 details = {"k": k, "_k": _k, "error_type": type(e), "error": e}
                 logger.error(False, '', '', details)
                 logger.error(False, "row: %s" % row)
@@ -141,22 +139,7 @@ def out_as_copy_csv(fields, fout, tablename, delimiter, _tbl, ifn, exit_on_error
                 if exit_on_error:
                     logger.critical(True, "exit_on_error for row is true, exiting!")
                     sys.exit(1)
-                remove_bad_line_number(row, ifn)
+                remove_bad_line_number(row, csvfilename)
 
 
-# http://stackoverflow.com/questions/17747522/how-to-delete-a-line-from-a-text-file-using-the-line-number-in-python
-def remove_bad_line_number(line_number, filename):
-    fn = lambda: fileinput.lineno() == line_number
-    remove_bad_line(filename, fn)
 
-
-def remove_bad_line_phrase(phrase, filename):
-    fn = lambda line: phrase in line
-    remove_bad_line(filename, fn)
-
-
-def remove_bad_line(filename, fn):
-    for line in fileinput.input(filename, inplace=True):
-        if fn(line):
-            continue
-        print(line, end='')
