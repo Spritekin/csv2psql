@@ -9,6 +9,7 @@ import sql_procedures
 import sql_triggers
 from column import *
 import logger
+from psql_copy import out_as_copy_stdin, out_as_copy_csv
 
 # TODO: write spec
 def _psql_identifier(s):
@@ -256,7 +257,7 @@ def csv2psql(ifn, tablename,
 
     # pass 2
     if load_data and not skip:
-        _out_as_copy(f, fout, tablename, delimiter, _tbl, ifn)
+        out_as_copy_csv(f, fout, tablename, delimiter, _tbl, ifn)
 
     if load_data and analyze_table and not skip:
         print >> fout, "ANALYZE", tablename, ";"
@@ -376,57 +377,3 @@ def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_us
         print >> fout, "ALTER TABLE", tablename, "ADD PRIMARY KEY (", ','.join(pkey), ");"
     if uniquekey is not None:
         print >> fout, "ALTER TABLE", tablename, "ADD UNIQUE (", ','.join(uniquekey), ");"
-
-
-def _out_as_copy(fields, fout, tablename, delimiter, _tbl, ifn, exit_on_error=False):
-    """
-    :param fields:
-    :param fout: fileout
-    :param tablename:
-    :param delimiter: not used but could be if we were just using the csv
-    :param _tbl: hashmap holding datatypes and values to be checked for integrity
-    :param ifn: original csv name
-    :param exit_on_error:  If a row fails to pass a data type if this is true the import is aborted. Else we skip the row.
-    :return: None
-
-    Purpose is to ensure data integrity by checking original csv data against the intended type for a col/row.
-
-    Approach:
-    Output only valid rows that have the correct types. This is an easier approach from a coding standpoint, however it is
-    slower as it require much more file IO when we already have the data in the CSV file itself. (Which PSQL can handle).
-    There fore this is basically duplicating an existing CSV within a *.sql file.
-
-    TODO:
-    An alternate approach would be to remove the invalid rows from an existing (or copied) csv. The rational here is there
-    would likely be fewer errors than successes. Thus lis I/O . Thus the \COPY statement here would point to a *.csv file
-    and have the delimiter and Null checks attached.
-    """
-    print >> fout, "\COPY %s FROM stdin NULL AS ''" % (tablename)
-    f = fields
-    for row in f:
-        # we have to ensure that we're cleanly reading the input data
-        outrow = []
-        for k in f.fieldnames:
-            assert k in row
-            try:
-                _k = mangle(k)
-                if _k in _tbl and 'type' in _tbl[_k]:
-                    dt = _tbl[_k]['type']
-                else:
-                    dt = str
-                outrow.append(_psqlencode(row[k], dt))
-            except ValueError, e:
-                logger.error(True, 'ERROR: %s' % ifn)
-                details = {"k": k, "_k": _k, "error_type": type(e), "error": e}
-
-                logger.error(True, '', '', details)
-                logger.error(True, "row: %s" % row)
-                if exit_on_error:
-                    logger.critical(True,"exit_on_error for row is true, exiting!")
-                    sys.exit(1)
-        print >> fout, "\t".join(outrow)
-    print >> fout, "\\."
-
-
-def _out_as_dump_sql():
-    return
