@@ -115,7 +115,7 @@ def out_as_copy_csv(fields, fout, tablename, delimiter, _tbl, csvfilename, exit_
     # backup original file (to look for errors)
     copyfile(csvfilename, "orig_" + csvfilename)
     nullStr = "NULL AS \'\\N\'"
-    print >> fout, "\COPY {tablename} FROM '{csvfilename}' {nullhandle} DELIMITER '{delimiter}' CSV;".format(
+    print >> fout, "\COPY {tablename} FROM '{csvfilename}' {nullhandle} DELIMITER '{delimiter}' HEADER CSV;".format(
         csvfilename=csvfilename, tablename=tablename, nullhandle=nullStr, delimiter=delimiter)
     f = fields
     for row in f:
