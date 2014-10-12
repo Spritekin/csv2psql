@@ -1,9 +1,10 @@
 from __future__ import print_function
 import fileinput
 
+
 # http://stackoverflow.com/questions/17747522/how-to-delete-a-line-from-a-text-file-using-the-line-number-in-python
 def remove_bad_line_number(line_number, filename):
-    fn = lambda: fileinput.lineno() == line_number
+    fn = lambda line: fileinput.lineno() == line_number
     remove_bad_line(filename, fn)
 
 

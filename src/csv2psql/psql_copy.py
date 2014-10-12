@@ -25,8 +25,8 @@ def _psqlencode(v, dt):
     >>> _psqlencode("	", str)
     '\\x09'
     '''
-    if v is None or v == '':
-        # if dt == str else '\\N'
+
+    if v is None or v == '' or v == '\\N':
         return ''
 
     if dt == int:
@@ -114,7 +114,7 @@ def out_as_copy_csv(fields, fout, tablename, delimiter, _tbl, csvfilename, exit_
     """
     # backup original file (to look for errors)
     copyfile(csvfilename, "orig_" + csvfilename)
-    nullStr = "NULL AS \\N"
+    nullStr = "NULL AS \'\\N\'"
     print >> fout, "\COPY {tablename} FROM '{csvfilename}' {nullhandle} DELIMITER '{delimiter}' CSV;".format(
         csvfilename=csvfilename, tablename=tablename, nullhandle=nullStr, delimiter=delimiter)
     f = fields

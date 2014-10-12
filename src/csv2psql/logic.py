@@ -53,48 +53,6 @@ def _grow_varchar(s):
     return l
 
 
-def _psqlencode(v, dt):
-    '''encodes using the text mode of PostgreSQL 8.4 "COPY FROM" command
-
-    >>> _psqlencode('hello "there"', str)
-    'hello "there"'
-    >>> _psqlencode("hello 'there'", str)
-    "hello 'there'"
-    >>> _psqlencode('True', int)
-    '1'
-    >>> _psqlencode(100.1, float)
-    '100.1'
-    >>> _psqlencode(100.1, int)
-    '100'
-    >>> _psqlencode('', str)
-    ''
-    >>> _psqlencode(None, int)
-    '\\N'
-    >>> _psqlencode("	", str)
-    '\\x09'
-
-    '''
-    if v is None or v == '':
-        # if dt == str else '\\N'
-        return ''
-
-    if dt == int:
-        if str(v).strip().lower() == 'true':
-            return '1'
-        if str(v).strip().lower() == 'false':
-            return '0'
-        return str(int(v))
-    if dt == float:
-        return str(float(v))
-    s = ''
-    for c in str(v):
-        if ord(c) < ord(' '):
-            s += '\\x%02x' % (ord(c))
-        else:
-            s += c
-    return s
-
-
 def _sniffer(f, maxsniff=-1, datatype={}):
     '''sniffs out data types'''
     _tbl = dict()
