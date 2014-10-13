@@ -233,8 +233,8 @@ def csv2psql(ifn, tablename,
         (keys, key_name) = joinkeys
         join_keys_key_name = key_name
         if serial is not None:
-            print >> fout, sql_alters.count_dupes(keys, key_name, tablename, serial, True)
-            print >> fout, sql_alters.delete_dupes(keys, key_name, tablename, serial, True)
+            # print >> fout, sql_alters.count_dupes(keys, key_name, tablename, serial, True)
+            print >> fout, sql_alters.fast_delete_dupes(keys, key_name, tablename, True)
         print >> fout, sql_alters.make_primary_key_w_join(tablename, key_name, keys)
 
     primary_key = pkey if pkey is not None else join_keys_key_name
@@ -251,8 +251,11 @@ def csv2psql(ifn, tablename,
         logger.info(True, "-- mangled_field_names: %s" % mangled_field_names)
         logger.info(True, "-- make_primary_key_first %s" % make_primary_key_first)
 
+        if serial:
+            mangled_field_names.append(serial)
         print >> fout, sql_triggers.modified_time_trigger(orig_tablename)
 
+        mangled_field_names.append("inserted_time")
         print >> fout, sql_alters.merge(mangled_field_names, orig_tablename,
                                         primary_key, make_primary_key_first, tablename)
     return _tbl

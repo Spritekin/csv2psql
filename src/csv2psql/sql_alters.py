@@ -102,6 +102,22 @@ def delete_dupes(fieldnames, primary_key, temp_tablename, serial, debug=False):
         select_statement=this_select_str
     )
 
+def fast_delete_dupes(fieldnames, primary_key, temp_tablename, debug=False):
+    if debug:
+        logger.debug(True, "-- delete dupes")
+
+    obj = dupes_clause(fieldnames, primary_key, temp_tablename, '')
+    specific_cols = ""
+
+    for key in obj['filtered_keys']:
+        specific_cols += "%s, " % key
+    specific_cols = specific_cols[:-2]
+
+
+    return delete_dups_fast_str.format(
+        tablename=temp_tablename,
+        cols=specific_cols,
+    )
 
 def dupes_clause(fieldnames, primary_key, temp_tablename, serial):
     clause = ""

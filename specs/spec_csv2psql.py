@@ -117,3 +117,20 @@ class SqlAlterSpec(unittest.TestCase):
             ALTER TABLE table1 ADD COLUMN crap SERIAL loto crap;
             """
         ))
+
+
+    def test_fast_delete_dupes(self):
+        sql_alters.fast_delete_dupes(["one", "two"], "key", "table1") | should | equal_to(dedent(
+            """
+            CREATE TABLE TMP_TABLE AS
+            SELECT DISTINCT ON (one, two) *
+            FROM table1;
+
+            SELECT (SELECT COUNT(*) as val1 FROM table1) - (SELECT COUNT(*) AS val2 FROM TMP_TABLE) AS DUPES;
+
+            DROP TABLE table1;
+            CREATE TABLE table1 AS
+            SELECT DISTINCT * FROM TMP_TABLE;
+            DROP TABLE TMP_TABLE;
+            """
+        ))

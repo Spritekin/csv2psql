@@ -56,17 +56,33 @@ DELETE FROM {tablename}
 WHERE {ors_missing_keys}
 """
 
+
+#THIS METHOD IS SLOW SQL
 select_dupes_str ="""
 FROM {tablename} AS t1, {tablename} AS t2
 WHERE {difference}
 {clause}"""
 
+#THIS METHOD IS SLOW SQL
 delete_dups_str = """
 DELETE FROM {tablename}
 WHERE ({cols}) IN (
 SELECT {specific_cols}
 {select_statement}
 );
+"""
+
+delete_dups_fast_str = """
+CREATE TABLE TMP_TABLE AS
+SELECT DISTINCT ON ({cols}) *
+FROM {tablename};
+
+SELECT (SELECT COUNT(*) as val1 FROM {tablename}) - (SELECT COUNT(*) AS val2 FROM TMP_TABLE) AS DUPES;
+
+DROP TABLE {tablename};
+CREATE TABLE {tablename} AS
+SELECT DISTINCT * FROM TMP_TABLE;
+DROP TABLE TMP_TABLE;
 """
 
 count_dups_str = "\nSELECT COUNT(*) AS DUPES" + select_dupes_str + ";"
