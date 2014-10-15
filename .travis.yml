@@ -4,8 +4,7 @@ python:
 install:
   - "easy_install figleaf"
   - "pip install -r requirements.txt"
-test:
-  - "specloud"
+script: "specloud"
 branches:
   only:
     - master
