@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-'''Converts a CSV file into a PostgreSQL table.
+'''
+```
+Converts a CSV file into a PostgreSQL table.
 
 Usage: csv2psql.py [options] ( input.csv | - ) [tablename] | psql
 
@@ -52,8 +54,10 @@ options include:
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
 CSV2PSQL_ROLE        default value for --role
+```
 '''
-__author__ = "Darren Hardy <hardy@nceas.ucsb.edu>"
+__author__ = "Nicholas McCready"
+__original_author__ = "Darren Hardy <hardy@nceas.ucsb.edu>"
 __version__ = '0.4.2'
 __credits__ = "Copyright (c) 2011-2013 NCEAS (UCSB). All rights reserved."
 
@@ -62,10 +66,23 @@ import sys
 assert sys.version_info >= (2, 6), "Requires python v2.6 or better"
 
 import os
-import os.path
+from os import popen, path
 import getopt
 import logic
 from mangle import *
+
+#try to dynamically keep the documentaiton / README up todate w/ one file
+dir = path.dirname(__file__)
+readme = os.path.join(dir, '../../README.md')
+real = os.path.realpath(".")
+
+if os.path.exists(readme):
+    sed = "sed -i '/\#\# Options/q' %s" % real + '/README.md'
+    # print sed
+    popen(sed).read()
+    with open(readme, "a") as myfile:
+        myfile.write(__doc__)
+#end of README sync
 
 _verbose = False
 
