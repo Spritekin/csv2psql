@@ -7,6 +7,7 @@ import re
 
 reg_matcher = re.compile('^.*"((.*"){2})*.*$')
 
+
 def _psqlencode(v, dt):
     '''encodes using the text mode of PostgreSQL 8.4 "COPY FROM" command
 
@@ -40,7 +41,7 @@ def _psqlencode(v, dt):
     if dt == float:
         return str(float(v))
 
-    #find odd quoted string
+    # find odd quoted string
     if reg_matcher.match(v):
         #if odd quote is first char
         if v[0] == '"':
@@ -54,7 +55,7 @@ def _psqlencode(v, dt):
     return s
 
 
-def out_as_copy_stdin(fields, fout, tablename, delimiter, _tbl, ifn, exit_on_error=False):
+def out_as_copy_stdin(fields, fout, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
     """
     :param fields:
     :param fout: fileout
@@ -75,7 +76,9 @@ def out_as_copy_stdin(fields, fout, tablename, delimiter, _tbl, ifn, exit_on_err
     nullStr = "NULL AS ''"
     print >> fout, "\COPY {tablename} FROM stdin {nullhandle}".format(tablename=tablename, nullhandle=nullStr)
     f = fields
+    index = 0
     for row in f:
+        index += 1
         # we have to ensure that we're cleanly reading the input data
         outrow = []
         for k in f.fieldnames:
@@ -87,15 +90,10 @@ def out_as_copy_stdin(fields, fout, tablename, delimiter, _tbl, ifn, exit_on_err
                 else:
                     dt = str
                 outrow.append(_psqlencode(row[k], dt))
-            except ValueError, e:
-                logger.error(True, 'ERROR: %s' % ifn)
-                details = {"k": k, "_k": _k, "error_type": type(e), "error": e}
-
-                logger.error(True, '', '', details)
-                logger.error(True, "row: %s" % row)
-                if exit_on_error:
-                    logger.critical(True, "exit_on_error for row is true, exiting!")
-                    sys.exit(1)
+            except ValueError as e:
+                _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
+            except Exception as e:
+                _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
         print >> fout, "\t".join(outrow)
     print >> fout, "\\."
 
@@ -123,7 +121,7 @@ def out_as_copy_csv(fields, fout, tablename, delimiter, _tbl, csvfilename, exit_
     # backup original file (to look for errors)
     copyfile(csvfilename, "orig_" + csvfilename)
     nullStr = "NULL AS \'\\N\'"
-    #HEADER CSV , for csv skip header
+    # HEADER CSV , for csv skip header
     print >> fout, "\COPY {tablename} FROM '{csvfilename}' {nullhandle} CSV HEADER DELIMITER '{delimiter}';".format(
         csvfilename=csvfilename, tablename=tablename, nullhandle=nullStr, delimiter=delimiter)
     f = fields
@@ -131,7 +129,6 @@ def out_as_copy_csv(fields, fout, tablename, delimiter, _tbl, csvfilename, exit_
     for row in f:
         index += 1
         # we have to ensure that we're cleanly reading the input data
-        outrow = []
         for k in f.fieldnames:
             assert k in row
             try:
@@ -141,19 +138,23 @@ def out_as_copy_csv(fields, fout, tablename, delimiter, _tbl, csvfilename, exit_
                 else:
                     dt = str
                 _psqlencode(row[k], dt)
-            except ValueError, e:
-                logger.error(False, 'ERROR: %s' % csvfilename)
-                details = {"k": k, "_k": _k, "error_type": type(e), "error": e}
-                logger.error(False, '', '', details)
-                logger.error(False, "row: %s" % row)
-                logger.error(False, "row#: {rownum}, col: {col}, type: {type}, value: {value}".format(
-                    rownum=index, col=k, type=dt, value=row[k]
-                ))
-
-                if exit_on_error:
-                    logger.critical(True, "exit_on_error for row is true, exiting!")
-                    sys.exit(1)
-                remove_bad_line_number(index, csvfilename)
+            except ValueError as e:
+                _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
+            except Exception as e:
+                _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
 
 
+def _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error):
+    pass
+    logger.error(False, 'ERROR: %s' % csvfilename)
+    details = {"k": k, "_k": _k, "error_type": type(e), "error": e}
+    logger.error(False, '', '', details)
+    logger.error(False, "row: %s" % row)
+    logger.error(False, "row#: {rownum}, col: {col}, type: {type}, value: {value}".format(
+        rownum=index, col=k, type=dt, value=row[k]
+    ))
 
+    if exit_on_error:
+        logger.critical(True, "exit_on_error for row is true, exiting!")
+        sys.exit(1)
+    remove_bad_line_number(index, csvfilename)
