@@ -1,3 +1,6 @@
+[![Requirements Status](https://requires.io/github/nmccready/csv2psql/requirements.svg?branch=master)](https://requires.io/github/nmccready/csv2psql/requirements/?branch=master)
+Master: [![Build Status](https://travis-ci.org/nmccready/csv2psql.png?branch=master)](https://travis-ci.org/nmccready/csv2psql)
+
 To try it out:
 
   % python setup.py install
