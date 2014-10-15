@@ -1,4 +1,4 @@
-[![Requirements Status](https://requires.io/github/nmccready/csv2psql/requirements.svg?branch=master)](https://requires.io/github/nmccready/csv2psql/requirements/?branch=master)
+[![Dependency Status](https://gemnasium.com/nmccready/csv2psql.svg)](https://gemnasium.com/nmccready/csv2psql)
 Master: [![Build Status](https://travis-ci.org/nmccready/csv2psql.png?branch=master)](https://travis-ci.org/nmccready/csv2psql)
 
 To try it out:
