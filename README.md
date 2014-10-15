@@ -55,6 +55,8 @@ options include:
 
 --primaryfirst=bool defaults to false
 
+--analyze_table=bool
+
 --do_add_cols - indicator to add modified_time, and other cols (timestamp,serial) . To delay till last run
 
 environment variables:

@@ -49,6 +49,8 @@ options include:
 
 --primaryfirst=bool defaults to false
 
+--analyze_table=bool
+
 --do_add_cols - indicator to add modified_time, and other cols (timestamp,serial) . To delay till last run
 
 environment variables:
@@ -124,7 +126,7 @@ def main(argv=None):
                                            "role=", "is_merge=", "joinkeys=",
                                            "dates=", "tablename=", "databasename=",
                                            "is_dump=", "is_merge=","primaryfirst=","serial=",
-                                           "timestamp=","do_add_cols="])
+                                           "timestamp=","do_add_cols=","analyze_table="])
         for o, a in opts:
             if o in ("--version"):
                 print __version__
@@ -192,6 +194,9 @@ def main(argv=None):
                 flags["timestamp"] = a.lower()
             elif o in ("--do_add_cols"):
                 flags["do_add_cols"] = True if a.lower() == 'true' else False
+            elif o in ("--analyze_table"):
+                flags["analyze_table"] = True if a.lower() == 'true' else False
+
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 
