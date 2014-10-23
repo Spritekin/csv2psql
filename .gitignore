@@ -9,6 +9,7 @@
 # Packages
 *.egg
 *.egg-info
+PKG-INFO
 dist
 build
 eggs
@@ -36,3 +37,7 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+*.zip
+*.log
+*.cfg
