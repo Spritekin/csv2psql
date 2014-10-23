@@ -224,18 +224,21 @@ def csv2psql(ifn, tablename,
     if dates is not None:
         for date_format, cols in dates.iteritems():
             print >> fout, sql_alters.dates(tablename, cols, date_format)
-    if do_add_cols:
-        additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge)
 
     # take cols and merge them into one primary_key
     join_keys_key_name = None
     if joinkeys is not None:
         (keys, key_name) = joinkeys
         join_keys_key_name = key_name
-        if serial is not None:
-            # print >> fout, sql_alters.count_dupes(keys, key_name, tablename, serial, True)
-            print >> fout, sql_alters.fast_delete_dupes(keys, key_name, tablename, True)
+
+        print >> fout, sql_alters.fast_delete_dupes(keys, key_name, tablename, True)
+        #doing additional cols here as some types are not moved over correctly (with table copy in dupes)
+        additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge)
+
         print >> fout, sql_alters.make_primary_key_w_join(tablename, key_name, keys)
+
+    if do_add_cols and joinkeys is None:
+        additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge)
 
     primary_key = pkey if pkey is not None else join_keys_key_name
     if is_array(primary_key):
@@ -251,20 +254,20 @@ def csv2psql(ifn, tablename,
         logger.info(True, "-- mangled_field_names: %s" % mangled_field_names)
         logger.info(True, "-- make_primary_key_first %s" % make_primary_key_first)
 
-        if serial:
-            mangled_field_names.append(serial)
         print >> fout, sql_triggers.modified_time_trigger(orig_tablename)
 
-        mangled_field_names.append("inserted_time")
         print >> fout, sql_alters.merge(mangled_field_names, orig_tablename,
                                         primary_key, make_primary_key_first, tablename)
     return _tbl
 
 
 def additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge):
+    '''
+    Method add additional columns for sql gen, (sql_alters) and type checking (mangled_field_names)
+    '''
+    #for alters in post processing temporary table to add columns
     cols_to_add_later = []
 
-    # managed by procedure / function
     mod_time = Column("modified_time", "timestamp".upper(), "default current_timestamp")
     cols_to_add_later.append(mod_time)
     mangled_field_names.append(mod_time.type)
