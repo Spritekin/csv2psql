@@ -4,9 +4,15 @@
 ```
 Converts a CSV file into a PostgreSQL table.
 
-Usage: csv2psql.py [options] ( input.csv | - ) [tablename] | psql
+Usage:
+    - cat input.csv | csv2psql [options] | psql
+    - cat input.csv | csv2psql [--now *options]
 
 options include:
+--now           pipe the sql into the postgres driver and push to sql immediately
+
+--postgres_url  url to send data to for postgres
+
 --schema=name   use name as schema, and strip table name if needed
 
 --role=name     use name as role for database transaction
@@ -196,12 +202,18 @@ def main(argv=None):
                 flags["do_add_cols"] = True if a.lower() == 'true' else False
             elif o in ("--analyze_table"):
                 flags["analyze_table"] = True if a.lower() == 'true' else False
-
+            elif o in ("--now"):
+                flags["result_prints_std_out"] = False
+            elif o in ("--postgres_url"):
+                flags['postgres_url'] = a
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 
             if not tablename:
                 assert False, 'Tablename is required via --tablename'
+
+            if not flags["result_prints_std_out"] and not flags['postgres_url']:
+                assert False, '--postgres_url required if --now is specified'
 
             print "-- flags: %s" % flags
             csv2psql(sys.stdin, mangle_table(tablename), **flags)

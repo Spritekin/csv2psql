@@ -154,7 +154,8 @@ def csv2psql(stream, tablename,
              do_add_cols=False,
              is_std_in=True,
              result_prints_std_out=True,
-             csv_filename=None):
+             csv_filename=None,
+             postgres_url=None):
     # maybe copy?
     _sql = ''
     orig_tablename = tablename + ""
@@ -267,6 +268,9 @@ def csv2psql(stream, tablename,
 
     if result_prints_std_out:
         chained.pipe()
+    else:
+        assert postgres_url, "postgres_url undefined"
+        chained.to_postgres(postgres_url)
 
     return chained
 

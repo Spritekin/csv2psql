@@ -13,9 +13,15 @@ To try it out:
 ```
 Converts a CSV file into a PostgreSQL table.
 
-Usage: csv2psql.py [options] ( input.csv | - ) [tablename] | psql
+Usage:
+    - cat input.csv | csv2psql [options] | psql
+    - cat input.csv | csv2psql [--now *options]
 
 options include:
+--now           pipe the sql into the postgres driver and push to sql immediately
+
+--postgres_url  url to send data to for postgres
+
 --schema=name   use name as schema, and strip table name if needed
 
 --role=name     use name as role for database transaction
