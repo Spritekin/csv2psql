@@ -223,7 +223,7 @@ def csv2psql(stream, tablename,
             out_as_copy_csv(f, _sql, tablename, delimiter, _tbl, csv_filename)
 
     if load_data and analyze_table and not skip:
-        _sql += "ANALYZE", tablename, ";"
+        _sql += "ANALYZE %s ;" % tablename
 
     # fix bad dates ints or stings to correct int format
     if dates is not None:
@@ -322,11 +322,11 @@ def is_array(var):
 
 def _create_table(sql, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial=None,
                   timestamp=None):
-    temporary_str = ""
 
-    sql += "DROP TABLE IF EXISTS", tablename, "CASCADE;" if cascade else ";"
+    sql += "DROP TABLE IF EXISTS %s" % tablename
+    sql += "CASCADE;" if cascade else ";"
 
-    sql += "CREATE %s TABLE" % temporary_str, tablename, "(\n\t",
+    sql += "CREATE TABLE %s (\n\t" % tablename
     cols = list()
     for k in f.fieldnames:
         _k = mangle(k)
@@ -363,10 +363,10 @@ def _create_table(sql, tablename, cascade, _tbl, f, default_to_null, default_use
     sql += ",\n\t".join(cols)
     sql += ");"
     if default_user is not None:
-        sql += "ALTER TABLE", tablename, "OWNER TO", default_user, ";"
+        sql += "ALTER TABLE %s OWNER TO %s" % (tablename, default_user)
     # TODO remove as this is basically duplicated in joinKeys, also pKey looks to never have
     # been flushed out, this is the only part that does anything, the copy part does nothing on pkey
     if pkey is not None:
-        sql += "ALTER TABLE", tablename, "ADD PRIMARY KEY (", ','.join(pkey), ");"
+        sql += "ALTER TABLE %s ADD PRIMARY KEY (%s);" % (tablename, pkey)
     if uniquekey is not None:
-        sql += "ALTER TABLE", tablename, "ADD UNIQUE (", ','.join(uniquekey), ");"
+        sql += "ALTER TABLE %s ADD UNIQUE (%s);" % (tablename, uniquekey)

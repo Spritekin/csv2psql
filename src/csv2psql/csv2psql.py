@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# !/usr/bin/env python
 # -*- coding: utf-8 -*-
 '''
 ```
@@ -90,7 +90,7 @@ if os.path.exists(readme):
     popen(sed).read()
     with open(readme, "a") as myfile:
         myfile.write(__doc__)
-#end of README sync
+# end of README sync
 
 _verbose = False
 
@@ -120,6 +120,9 @@ def main(argv=None):
     tablename = None
     if argv is None:
         argv = sys.argv[1:]
+        # print "argv: "
+        # print argv
+        # print "end argv: "
     try:
         # init default flags
         flags = dict()
@@ -132,7 +135,13 @@ def main(argv=None):
                                            "role=", "is_merge=", "joinkeys=",
                                            "dates=", "tablename=", "databasename=",
                                            "is_dump=", "is_merge=", "primaryfirst=", "serial=",
-                                           "timestamp=", "do_add_cols=", "analyze_table="])
+                                           "timestamp=", "do_add_cols=", "analyze_table=",
+                                           "now", "postgres_url="])
+        # print "opts: "
+        # print opts
+        # print "end opts"
+        # print
+
         for o, a in opts:
             if o in ("--version"):
                 print __version__
@@ -176,7 +185,8 @@ def main(argv=None):
             elif o in ("--is_merge"):
                 flags['is_merge'] = True if a.lower() == 'true' else False
             elif o in ("--tablename"):
-                tablename = a.lower()
+                flags['tablename'] = a.lower()
+                tablename = flags['tablename']
             elif o in ("--joinkeys"):
                 ( keys, key_name ) = a.lower().split(':')
                 keys = keys.lower().split(',')
@@ -203,20 +213,29 @@ def main(argv=None):
             elif o in ("--analyze_table"):
                 flags["analyze_table"] = True if a.lower() == 'true' else False
             elif o in ("--now"):
+                flags["now"] = True
                 flags["result_prints_std_out"] = False
             elif o in ("--postgres_url"):
                 flags['postgres_url'] = a
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 
-            if not tablename:
-                assert False, 'Tablename is required via --tablename'
-
-            if not flags["result_prints_std_out"] and not flags['postgres_url']:
-                assert False, '--postgres_url required if --now is specified'
-
             print "-- flags: %s" % flags
-            csv2psql(sys.stdin, mangle_table(tablename), **flags)
+
+            if not tablename:
+                assert False, 'tablename is required via --tablename'
+
+            if flags.has_key('postgres_url'):
+                if not flags.has_key('result_prints_std_out') or (
+                            not flags["result_prints_std_out"] and flags['postgres_url']):
+                    assert False, '--postgres_url required if --now is specified'
+
+
+            print "-- tablename %s" % tablename
+            flags["tablename"] = mangle_table(tablename)
+            print "-- mangled tablename %s" % tablename
+
+            csv2psql(sys.stdin, **flags)
             return 0
 
     except getopt.GetoptError, err:
