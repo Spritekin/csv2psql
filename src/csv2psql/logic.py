@@ -10,6 +10,8 @@ import sql_triggers
 from column import *
 import logger
 from psql_copy import out_as_copy_stdin, out_as_copy_csv
+from to_postgres import to_postgres
+from dict_to_obj import to_obj
 
 # TODO: write spec
 def _psql_identifier(s):
@@ -232,7 +234,7 @@ def csv2psql(ifn, tablename,
         join_keys_key_name = key_name
 
         print >> fout, sql_alters.fast_delete_dupes(keys, key_name, tablename, True)
-        #doing additional cols here as some types are not moved over correctly (with table copy in dupes)
+        # doing additional cols here as some types are not moved over correctly (with table copy in dupes)
         additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge)
 
         print >> fout, sql_alters.make_primary_key_w_join(tablename, key_name, keys)
@@ -258,14 +260,25 @@ def csv2psql(ifn, tablename,
 
         print >> fout, sql_alters.merge(mangled_field_names, orig_tablename,
                                         primary_key, make_primary_key_first, tablename)
-    return _tbl
+    return chain(_tbl)
+
+
+def chain(sql, postgres_fn=to_postgres):
+    def call_postgres(url):
+        return postgres_fn(url, sql).result
+
+    obj = to_obj({
+        "sql": sql,
+        "to_postgres": call_postgres
+    })
+    return obj
 
 
 def additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge):
     '''
     Method add additional columns for sql gen, (sql_alters) and type checking (mangled_field_names)
     '''
-    #for alters in post processing temporary table to add columns
+    # for alters in post processing temporary table to add columns
     cols_to_add_later = []
 
     mod_time = Column("modified_time", "timestamp".upper(), "default current_timestamp")
