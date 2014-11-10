@@ -125,7 +125,7 @@ def _sniffer(f, maxsniff=-1, datatype={}):
     return _tbl
 
 
-def csv2psql(ifn, tablename,
+def csv2psql(stream, tablename,
              fout=sys.stdout,
              analyze_table=True,
              cascade=False,
@@ -153,7 +153,8 @@ def csv2psql(ifn, tablename,
              timestamp=None,
              do_add_cols=False,
              is_std_in=True,
-             result_prints_std_out=True):
+             result_prints_std_out=True,
+             csv_filename=None):
     # maybe copy?
     _sql = ''
     orig_tablename = tablename + ""
@@ -174,15 +175,10 @@ def csv2psql(ifn, tablename,
         if default_user == '':
             default_user = None
 
-    if ifn == '-':
-        maxsniff = 0
-        create_table = False
-
     # pass 1
     _tbl = dict()
     # always create temporary table
-    logger.info(True, "-- original csv: %s" % ifn)
-    f = csv.DictReader(sys.stdin if ifn == '-' else open(ifn, 'rU'), restval='', delimiter=delimiter)
+    f = csv.DictReader(stream, restval='', delimiter=delimiter)
     mangled_field_names = []
     for key in f.fieldnames:
         mangled_field_names.append(mangle(key))
@@ -221,9 +217,9 @@ def csv2psql(ifn, tablename,
     # pass 2
     if load_data and not skip:
         if is_std_in:
-            out_as_copy_stdin(f, _sql, tablename, delimiter, _tbl, ifn)
+            out_as_copy_stdin(f, _sql, tablename, delimiter, _tbl)
         else:
-            out_as_copy_csv(f, _sql, tablename, delimiter, _tbl, ifn)
+            out_as_copy_csv(f, _sql, tablename, delimiter, _tbl, csv_filename)
 
     if load_data and analyze_table and not skip:
         _sql += "ANALYZE", tablename, ";"

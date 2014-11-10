@@ -73,7 +73,7 @@ import getopt
 import logic
 from mangle import *
 
-#try to dynamically keep the documentaiton / README up todate w/ one file
+# try to dynamically keep the documentaiton / README up todate w/ one file
 dir = path.dirname(__file__)
 readme = os.path.join(dir, '../../README.md')
 real = os.path.realpath(".")
@@ -125,8 +125,8 @@ def main(argv=None):
                                            "sniff=", "delimiter=", "datatype=",
                                            "role=", "is_merge=", "joinkeys=",
                                            "dates=", "tablename=", "databasename=",
-                                           "is_dump=", "is_merge=","primaryfirst=","serial=",
-                                           "timestamp=","do_add_cols=","analyze_table="])
+                                           "is_dump=", "is_merge=", "primaryfirst=", "serial=",
+                                           "timestamp=", "do_add_cols=", "analyze_table="])
         for o, a in opts:
             if o in ("--version"):
                 print __version__
@@ -200,34 +200,13 @@ def main(argv=None):
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 
-        if len(args) < 1:
-            _usage()
-            return -1
-        # with a single argument -- we guess the table name
-        elif len(args) == 1:
-            fn = args[0]
-            if fn == '-':
-                raise getopt.GetoptError('cannot guess tablename')
-            if tablename is None:
-                tablename = os.path.splitext(os.path.basename(fn))[0]
-            if 'schema' not in flags:
-                for s in _schemas:
-                    if tablename.startswith(s):
-                        flags['schema'] = s
-                        break
+            if not tablename:
+                assert False, 'Tablename is required via --tablename'
 
             print "-- flags: %s" % flags
-            csv2psql(fn, mangle_table(tablename), **flags)
+            csv2psql(sys.stdin, mangle_table(tablename), **flags)
             return 0
-        elif len(args) == 2:
-            fn = args[0]
-            if tablename is None:
-                tablename = args[1]
-            print flags;
-            csv2psql(fn, mangle_table(tablename), **flags)
-            return 0
-        else:
-            assert False, 'notreached'
+
     except getopt.GetoptError, err:
         print >> sys.stderr, 'ERROR:', str(err), "\n\n"
         _usage()

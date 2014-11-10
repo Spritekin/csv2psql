@@ -55,7 +55,7 @@ def _psqlencode(v, dt):
     return s
 
 
-def out_as_copy_stdin(fields, sql, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
+def out_as_copy_stdin(fields, sql, tablename, delimiter, _tbl, exit_on_error=False):
     """
     :param fields:
     :param sql: sql String
@@ -91,9 +91,9 @@ def out_as_copy_stdin(fields, sql, tablename, delimiter, _tbl, csvfilename, exit
                     dt = str
                 outrow.append(_psqlencode(row[k], dt))
             except ValueError as e:
-                _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
+                _handle_error(e, k,  _k, row, index, dt, exit_on_error)
             except Exception as e:
-                _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
+                _handle_error(e, k,  _k, row, index, dt, exit_on_error)
         sql += "\t".join(outrow)
     sql += "\\."
 
@@ -144,9 +144,9 @@ def out_as_copy_csv(fields, sql, tablename, delimiter, _tbl, csvfilename, exit_o
                 _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
 
 
-def _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error):
+def _handle_error(e, k, _k, row, index, dt, exit_on_error):
     pass
-    logger.error(False, 'ERROR: %s' % csvfilename)
+    logger.error(False, 'CSV ERROR:')
     details = {"k": k, "_k": _k, "error_type": type(e), "error": e}
     logger.error(False, '', '', details)
     logger.error(False, "row: %s" % row)
@@ -157,4 +157,4 @@ def _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error):
     if exit_on_error:
         logger.critical(True, "exit_on_error for row is true, exiting!")
         sys.exit(1)
-    remove_bad_line_number(index, csvfilename)
+    remove_bad_line_number(index)
