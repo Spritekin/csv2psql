@@ -151,8 +151,11 @@ def csv2psql(ifn, tablename,
              make_primary_key_first=False,
              serial=None,
              timestamp=None,
-             do_add_cols=False):
+             do_add_cols=False,
+             is_std_in=True,
+             result_prints_std_out=True):
     # maybe copy?
+    _sql = ''
     orig_tablename = tablename + ""
     skip = is_merge or is_dump
 
@@ -188,11 +191,11 @@ def csv2psql(ifn, tablename,
     logger.info(True, "-- _tbl: %s" % _tbl)
 
     if default_user is not None and not skip:
-        print >> fout, "SET ROLE", default_user, ";\n"
+        _sql += "SET ROLE", default_user, ";\n"
 
     # add schema as sole one in search path, and snip table name if starts with schema
     if schema is not None and not skip:
-        print >> fout, "SET search_path TO %s;" % (schema)
+        _sql += "SET search_path TO %s;" % (schema)
         if strip_prefix and tablename.startswith(schema):
             tablename = tablename[len(schema) + 1:]
             while not tablename[0].isalpha():
@@ -200,32 +203,35 @@ def csv2psql(ifn, tablename,
 
     # add explicit client encoding
     if force_utf8:
-        print >> fout, "\\encoding UTF8\n"
+        _sql += "\\encoding UTF8\n"
 
     if quiet and not skip:
-        print >> fout, "SET client_min_messages TO ERROR;\n"
+        _sql += "SET client_min_messages TO ERROR;\n"
 
     if create_table and not skip:
         logger.info(True, "-- CREATING TABLE")
-        _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial,
+        _create_table(_sql, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial,
                       timestamp)
-        print >> fout, sql_procedures.modified_time_procedure.procedure_str
-        # print >> fout, sql_triggers.modified_time_trigger(tablename)
+        _sql += sql_procedures.modified_time_procedure.procedure_str
+        # _sql += sql_triggers.modified_time_trigger(tablename)
 
     if truncate_table and not load_data and not skip:
-        print >> fout, "TRUNCATE TABLE", tablename, ";"
+        _sql += "TRUNCATE TABLE", tablename, ";"
 
     # pass 2
     if load_data and not skip:
-        out_as_copy_csv(f, fout, tablename, delimiter, _tbl, ifn)
+        if is_std_in:
+            out_as_copy_stdin(f, _sql, tablename, delimiter, _tbl, ifn)
+        else:
+            out_as_copy_csv(f, _sql, tablename, delimiter, _tbl, ifn)
 
     if load_data and analyze_table and not skip:
-        print >> fout, "ANALYZE", tablename, ";"
+        _sql += "ANALYZE", tablename, ";"
 
     # fix bad dates ints or stings to correct int format
     if dates is not None:
         for date_format, cols in dates.iteritems():
-            print >> fout, sql_alters.dates(tablename, cols, date_format)
+            _sql += sql_alters.dates(tablename, cols, date_format)
 
     # take cols and merge them into one primary_key
     join_keys_key_name = None
@@ -233,14 +239,14 @@ def csv2psql(ifn, tablename,
         (keys, key_name) = joinkeys
         join_keys_key_name = key_name
 
-        print >> fout, sql_alters.fast_delete_dupes(keys, key_name, tablename, True)
+        _sql += sql_alters.fast_delete_dupes(keys, key_name, tablename, True)
         # doing additional cols here as some types are not moved over correctly (with table copy in dupes)
-        additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge)
+        additional_cols(_sql, tablename, serial, timestamp, mangled_field_names, is_merge)
 
-        print >> fout, sql_alters.make_primary_key_w_join(tablename, key_name, keys)
+        _sql += sql_alters.make_primary_key_w_join(tablename, key_name, keys)
 
     if do_add_cols and joinkeys is None:
-        additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge)
+        additional_cols(_sql, tablename, serial, timestamp, mangled_field_names, is_merge)
 
     primary_key = pkey if pkey is not None else join_keys_key_name
     if is_array(primary_key):
@@ -249,32 +255,42 @@ def csv2psql(ifn, tablename,
     # take temporary table and merge it into a real table
     if primary_key is not None and is_dump:
         if create_table and database_name:
-            print >> fout, sql_alters.pg_dump(database_name, schema, tablename)
+            _sql += sql_alters.pg_dump(database_name, schema, tablename)
             # TODO re-order the primary_key to first column
 
     if is_merge and primary_key is not None:
         logger.info(True, "-- mangled_field_names: %s" % mangled_field_names)
         logger.info(True, "-- make_primary_key_first %s" % make_primary_key_first)
 
-        print >> fout, sql_triggers.modified_time_trigger(orig_tablename)
+        _sql += sql_triggers.modified_time_trigger(orig_tablename)
 
-        print >> fout, sql_alters.merge(mangled_field_names, orig_tablename,
-                                        primary_key, make_primary_key_first, tablename)
-    return chain(_tbl)
+        _sql += sql_alters.merge(mangled_field_names, orig_tablename,
+                                 primary_key, make_primary_key_first, tablename)
+
+    chained = chain(_sql)
+
+    if result_prints_std_out:
+        chained.pipe()
+
+    return chained
 
 
 def chain(sql, postgres_fn=to_postgres):
     def call_postgres(url):
         return postgres_fn(url, sql).result
 
+    def pipe_to_std_out():
+        print sql
+
     obj = to_obj({
+        "pipe": pipe_to_std_out,
         "sql": sql,
         "to_postgres": call_postgres
     })
     return obj
 
 
-def additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_merge):
+def additional_cols(sql, tablename, serial, timestamp, mangled_field_names, is_merge):
     '''
     Method add additional columns for sql gen, (sql_alters) and type checking (mangled_field_names)
     '''
@@ -297,20 +313,20 @@ def additional_cols(fout, tablename, serial, timestamp, mangled_field_names, is_
 
     logger.info(True, "-- cols_to_add_later: %s" % cols_to_add_later)
     if len(cols_to_add_later) > 0 and not is_merge:
-        print >> fout, sql_alters.add_cols(cols_to_add_later, tablename)
+        sql += sql_alters.add_cols(cols_to_add_later, tablename)
 
 
 def is_array(var):
     return isinstance(var, (list, tuple))
 
 
-def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial=None,
+def _create_table(sql, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial=None,
                   timestamp=None):
     temporary_str = ""
 
-    print >> fout, "DROP TABLE IF EXISTS", tablename, "CASCADE;" if cascade else ";"
+    sql += "DROP TABLE IF EXISTS", tablename, "CASCADE;" if cascade else ";"
 
-    print >> fout, "CREATE %s TABLE" % temporary_str, tablename, "(\n\t",
+    sql += "CREATE %s TABLE" % temporary_str, tablename, "(\n\t",
     cols = list()
     for k in f.fieldnames:
         _k = mangle(k)
@@ -344,13 +360,13 @@ def _create_table(fout, tablename, cascade, _tbl, f, default_to_null, default_us
             sqldt += " NOT NULL"
         cols.append('%s %s' % (_psql_identifier(_k), sqldt))
 
-    print >> fout, ",\n\t".join(cols)
-    print >> fout, ");"
+    sql += ",\n\t".join(cols)
+    sql += ");"
     if default_user is not None:
-        print >> fout, "ALTER TABLE", tablename, "OWNER TO", default_user, ";"
+        sql += "ALTER TABLE", tablename, "OWNER TO", default_user, ";"
     # TODO remove as this is basically duplicated in joinKeys, also pKey looks to never have
     # been flushed out, this is the only part that does anything, the copy part does nothing on pkey
     if pkey is not None:
-        print >> fout, "ALTER TABLE", tablename, "ADD PRIMARY KEY (", ','.join(pkey), ");"
+        sql += "ALTER TABLE", tablename, "ADD PRIMARY KEY (", ','.join(pkey), ");"
     if uniquekey is not None:
-        print >> fout, "ALTER TABLE", tablename, "ADD UNIQUE (", ','.join(uniquekey), ");"
+        sql += "ALTER TABLE", tablename, "ADD UNIQUE (", ','.join(uniquekey), ");"

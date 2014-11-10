@@ -55,10 +55,10 @@ def _psqlencode(v, dt):
     return s
 
 
-def out_as_copy_stdin(fields, fout, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
+def out_as_copy_stdin(fields, sql, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
     """
     :param fields:
-    :param fout: fileout
+    :param sql: sql String
     :param tablename:
     :param delimiter: not used but could be if we were just using the csv
     :param _tbl: hashmap holding datatypes and values to be checked for integrity
@@ -74,7 +74,7 @@ def out_as_copy_stdin(fields, fout, tablename, delimiter, _tbl, csvfilename, exi
     There fore this is basically duplicating an existing CSV within a *.sql file.
     """
     nullStr = "NULL AS ''"
-    print >> fout, "\COPY {tablename} FROM stdin {nullhandle}".format(tablename=tablename, nullhandle=nullStr)
+    sql += "\COPY {tablename} FROM stdin {nullhandle}".format(tablename=tablename, nullhandle=nullStr)
     f = fields
     index = 0
     for row in f:
@@ -94,14 +94,14 @@ def out_as_copy_stdin(fields, fout, tablename, delimiter, _tbl, csvfilename, exi
                 _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
             except Exception as e:
                 _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
-        print >> fout, "\t".join(outrow)
-    print >> fout, "\\."
+        sql += "\t".join(outrow)
+    sql += "\\."
 
 
-def out_as_copy_csv(fields, fout, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
+def out_as_copy_csv(fields, sql, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
     """
     :param fields:
-    :param fout: fileout
+    :param sql: sql String
     :param tablename:
     :param delimiter: not used but could be if we were just using the csv
     :param _tbl: hashmap holding datatypes and values to be checked for integrity
@@ -122,7 +122,7 @@ def out_as_copy_csv(fields, fout, tablename, delimiter, _tbl, csvfilename, exit_
     copyfile(csvfilename, "orig_" + csvfilename)
     nullStr = "NULL AS \'\\N\'"
     # HEADER CSV , for csv skip header
-    print >> fout, "\COPY {tablename} FROM '{csvfilename}' {nullhandle} CSV HEADER DELIMITER '{delimiter}';".format(
+    sql += "\COPY {tablename} FROM '{csvfilename}' {nullhandle} CSV HEADER DELIMITER '{delimiter}';".format(
         csvfilename=csvfilename, tablename=tablename, nullhandle=nullStr, delimiter=delimiter)
     f = fields
     index = 0
