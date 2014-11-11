@@ -12,6 +12,7 @@ import logger
 from psql_copy import out_as_copy_stdin, out_as_copy_csv
 from to_postgres import to_postgres
 from dict_to_obj import to_obj
+from cStringIO import StringIO
 
 # TODO: write spec
 def _psql_identifier(s):
@@ -55,11 +56,12 @@ def _grow_varchar(s):
     return l
 
 
-def _sniffer(f, maxsniff=-1, datatype={}):
+def _sniffer(f, maxsniff=-1, datatype={}, do_log=False):
     '''sniffs out data types'''
     _tbl = dict()
-    logger.info(True, "-- fieldnames: %s" % f.fieldnames)
-    logger.info(True, "-- datatype: %s" % datatype)
+    if do_log:
+        logger.info(True, "-- fieldnames: %s" % f.fieldnames)
+        logger.info(True, "-- datatype: %s" % datatype)
     # initialize data types
     for k in f.fieldnames:
         _k = mangle(k)
@@ -125,6 +127,12 @@ def _sniffer(f, maxsniff=-1, datatype={}):
     return _tbl
 
 
+def dict_reader(str_to_stream, delimiter):
+    # reset the stream / reload stream via string
+    stream = StringIO(str_to_stream)
+    return csv.DictReader(stream, restval='', delimiter=delimiter)
+
+
 def csv2psql(stream,
              tablename,
              analyze_table=True,
@@ -178,14 +186,19 @@ def csv2psql(stream,
 
     # pass 1
     _tbl = {}
-    # always create temporary table
-    f = csv.DictReader(stream, restval='', delimiter=delimiter)
+
+    # back_up stream / data
+    data = ''
+    for line in stream:
+        data += line
+
+    f = dict_reader(data, delimiter)
     mangled_field_names = []
     for key in f.fieldnames:
         mangled_field_names.append(mangle(key))
     _tbl = _sniffer(f, maxsniff, datatype)
 
-    logger.info(True, "-- _tbl: %s" % _tbl)
+    # logger.info(True, "-- _tbl: %s" % _tbl)
 
     if default_user is not None and not skip:
         _sql += "SET ROLE %s;\n" % default_user
@@ -225,9 +238,9 @@ def csv2psql(stream,
     # pass 2
     if load_data and not skip:
         if is_std_in:
-            _sql += out_as_copy_stdin(f, tablename, delimiter, _tbl)
+            _sql += out_as_copy_stdin(dict_reader(data, delimiter), tablename, delimiter, _tbl)
         else:
-            _sql += out_as_copy_csv(f, tablename, delimiter, _tbl, csv_filename)
+            _sql += out_as_copy_csv(dict_reader(data, delimiter), tablename, delimiter, _tbl, csv_filename)
 
     if load_data and analyze_table and not skip:
         _sql += "ANALYZE %s;\n" % tablename
@@ -270,7 +283,7 @@ def csv2psql(stream,
 
         _sql += sql_alters.merge(mangled_field_names, orig_tablename,
                                  primary_key, make_primary_key_first, tablename)
-    print _sql
+    logger.info(True, _sql)
     # chained = chain(_sql)
     #
     # if result_prints_std_out:
@@ -302,7 +315,7 @@ def additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge)
     '''
     Method add additional columns for sql gen, (sql_alters) and type checking (mangled_field_names)
     '''
-    sql=''
+    sql = ''
     # for alters in post processing temporary table to add columns
     cols_to_add_later = []
 

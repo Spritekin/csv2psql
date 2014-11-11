@@ -219,7 +219,7 @@ def main(argv=None):
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 
-        print "-- flags: %s" % flags
+        # print "-- flags: %s" % flags
 
         if not tablename:
             assert False, 'tablename is required via --tablename'

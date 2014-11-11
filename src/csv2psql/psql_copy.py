@@ -58,11 +58,9 @@ def _psqlencode(v, dt):
 def out_as_copy_stdin(fields, tablename, delimiter, _tbl, exit_on_error=False):
     """
     :param fields:
-    :param sql: sql String
     :param tablename:
     :param delimiter: not used but could be if we were just using the csv
     :param _tbl: hashmap holding datatypes and values to be checked for integrity
-    :param ifn: original csv name
     :param exit_on_error:  If a row fails to pass a data type if this is true the import is aborted. Else we skip the row.
     :return: None
 
@@ -73,16 +71,22 @@ def out_as_copy_stdin(fields, tablename, delimiter, _tbl, exit_on_error=False):
     slower as it require much more file IO when we already have the data in the CSV file itself. (Which PSQL can handle).
     There fore this is basically duplicating an existing CSV within a *.sql file.
     """
+    for k, v in [('fields', fields), ('tablename', tablename), ('delimiter', delimiter), ('_tbl', _tbl)]:
+        logger.info(True, "out_as_copy_stdin: %s: %s" % (k, v))
     sql = ''
     nullStr = "NULL AS ''"
     sql += "\COPY {tablename} FROM stdin {nullhandle}".format(tablename=tablename, nullhandle=nullStr)
-    f = fields
+
+    logger.info(True, "fieldnames: %s" % fields.fieldnames)
+    logger.info(True, "LINE: %s" % fields.line_num)
+    # logger.info(True, "NEXT: %s" % fields.next())
     index = 0
-    for row in f:
+    for row in fields:
+        logger.info(True, "row: %s" % row)
         index += 1
         # we have to ensure that we're cleanly reading the input data
         outrow = []
-        for k in f.fieldnames:
+        for k in fields.fieldnames:
             assert k in row
             try:
                 _k = mangle(k)
@@ -95,6 +99,7 @@ def out_as_copy_stdin(fields, tablename, delimiter, _tbl, exit_on_error=False):
                 _handle_error(e, k, _k, row, index, dt, exit_on_error)
             except Exception as e:
                 _handle_error(e, k, _k, row, index, dt, exit_on_error)
+        print outrow
         sql += "\t".join(outrow)
     sql += "\\."
 
@@ -104,11 +109,10 @@ def out_as_copy_stdin(fields, tablename, delimiter, _tbl, exit_on_error=False):
 def out_as_copy_csv(fields, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
     """
     :param fields:
-    :param sql: sql String
     :param tablename:
     :param delimiter: not used but could be if we were just using the csv
     :param _tbl: hashmap holding datatypes and values to be checked for integrity
-    :param ifn: original csv name
+    :param csvfilename: original csv name
     :param exit_on_error:  If a row fails to pass a data type if this is true the import is aborted. Else we skip the row.
     :return: None
 
@@ -128,12 +132,12 @@ def out_as_copy_csv(fields, tablename, delimiter, _tbl, csvfilename, exit_on_err
     # HEADER CSV , for csv skip header
     sql += "\COPY {tablename} FROM '{csvfilename}' {nullhandle} CSV HEADER DELIMITER '{delimiter}';".format(
         csvfilename=csvfilename, tablename=tablename, nullhandle=nullStr, delimiter=delimiter)
-    f = fields
+
     index = 0
-    for row in f:
+    for row in fields:
         index += 1
         # we have to ensure that we're cleanly reading the input data
-        for k in f.fieldnames:
+        for k in fields.fieldnames:
             assert k in row
             try:
                 _k = mangle(k)
