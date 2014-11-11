@@ -143,6 +143,7 @@ def main(argv=None):
         # print
 
         for o, a in opts:
+            # print a
             if o in ("--version"):
                 print __version__
                 return 0
@@ -185,8 +186,7 @@ def main(argv=None):
             elif o in ("--is_merge"):
                 flags['is_merge'] = True if a.lower() == 'true' else False
             elif o in ("--tablename"):
-                flags['tablename'] = a.lower()
-                tablename = flags['tablename']
+                tablename = a.lower()
             elif o in ("--joinkeys"):
                 ( keys, key_name ) = a.lower().split(':')
                 keys = keys.lower().split(',')
@@ -213,30 +213,28 @@ def main(argv=None):
             elif o in ("--analyze_table"):
                 flags["analyze_table"] = True if a.lower() == 'true' else False
             elif o in ("--now"):
-                flags["now"] = True
-                flags["result_prints_std_out"] = False
+                flags["result_prints_std_out"] = False #inverse of now
             elif o in ("--postgres_url"):
                 flags['postgres_url'] = a
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 
-            print "-- flags: %s" % flags
+        print "-- flags: %s" % flags
 
-            if not tablename:
-                assert False, 'tablename is required via --tablename'
+        if not tablename:
+            assert False, 'tablename is required via --tablename'
 
-            if flags.has_key('postgres_url'):
-                if not flags.has_key('result_prints_std_out') or (
-                            not flags["result_prints_std_out"] and flags['postgres_url']):
-                    assert False, '--postgres_url required if --now is specified'
+        if flags.has_key('postgres_url'):
+            if not flags.has_key('result_prints_std_out') or (flags["result_prints_std_out"] and flags['postgres_url']):
+                assert False, '--postgres_url required if --now is specified'
 
 
-            print "-- tablename %s" % tablename
-            flags["tablename"] = mangle_table(tablename)
-            print "-- mangled tablename %s" % tablename
+        print "-- tablename %s" % tablename
+        tablename = mangle_table(tablename)
+        print "-- mangled tablename %s" % tablename
 
-            csv2psql(sys.stdin, **flags)
-            return 0
+        csv2psql(sys.stdin, tablename, **flags)
+        return 0
 
     except getopt.GetoptError, err:
         print >> sys.stderr, 'ERROR:', str(err), "\n\n"

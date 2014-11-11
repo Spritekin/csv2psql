@@ -125,8 +125,8 @@ def _sniffer(f, maxsniff=-1, datatype={}):
     return _tbl
 
 
-def csv2psql(stream, tablename,
-             fout=sys.stdout,
+def csv2psql(stream,
+             tablename,
              analyze_table=True,
              cascade=False,
              create_table=True,
@@ -188,11 +188,11 @@ def csv2psql(stream, tablename,
     logger.info(True, "-- _tbl: %s" % _tbl)
 
     if default_user is not None and not skip:
-        _sql += "SET ROLE", default_user, ";\n"
+        _sql += "SET ROLE %s;\n" % default_user
 
     # add schema as sole one in search path, and snip table name if starts with schema
     if schema is not None and not skip:
-        _sql += "SET search_path TO %s;" % (schema)
+        _sql += "SET search_path TO %s;\n" % schema
         if strip_prefix and tablename.startswith(schema):
             tablename = tablename[len(schema) + 1:]
             while not tablename[0].isalpha():
@@ -206,24 +206,24 @@ def csv2psql(stream, tablename,
         _sql += "SET client_min_messages TO ERROR;\n"
 
     if create_table and not skip:
-        logger.info(True, "-- CREATING TABLE")
-        _create_table(_sql, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial,
-                      timestamp)
+        logger.info(True, "-- CREATING TABLE\n")
+        _sql += _create_table(_sql, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial,
+                              timestamp)
         _sql += sql_procedures.modified_time_procedure.procedure_str
         # _sql += sql_triggers.modified_time_trigger(tablename)
 
     if truncate_table and not load_data and not skip:
-        _sql += "TRUNCATE TABLE", tablename, ";"
+        _sql += "TRUNCATE TABLE %s;\n" % tablename
 
     # pass 2
     if load_data and not skip:
         if is_std_in:
-            out_as_copy_stdin(f, _sql, tablename, delimiter, _tbl)
+            _sql += out_as_copy_stdin(f, _sql, tablename, delimiter, _tbl)
         else:
-            out_as_copy_csv(f, _sql, tablename, delimiter, _tbl, csv_filename)
+            _sql += out_as_copy_csv(f, _sql, tablename, delimiter, _tbl, csv_filename)
 
     if load_data and analyze_table and not skip:
-        _sql += "ANALYZE %s ;" % tablename
+        _sql += "ANALYZE %s;\n" % tablename
 
     # fix bad dates ints or stings to correct int format
     if dates is not None:
@@ -238,7 +238,7 @@ def csv2psql(stream, tablename,
 
         _sql += sql_alters.fast_delete_dupes(keys, key_name, tablename, True)
         # doing additional cols here as some types are not moved over correctly (with table copy in dupes)
-        additional_cols(_sql, tablename, serial, timestamp, mangled_field_names, is_merge)
+        _sql += additional_cols(_sql, tablename, serial, timestamp, mangled_field_names, is_merge)
 
         _sql += sql_alters.make_primary_key_w_join(tablename, key_name, keys)
 
@@ -315,6 +315,8 @@ def additional_cols(sql, tablename, serial, timestamp, mangled_field_names, is_m
     if len(cols_to_add_later) > 0 and not is_merge:
         sql += sql_alters.add_cols(cols_to_add_later, tablename)
 
+    return sql
+
 
 def is_array(var):
     return isinstance(var, (list, tuple))
@@ -322,9 +324,8 @@ def is_array(var):
 
 def _create_table(sql, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial=None,
                   timestamp=None):
-
     sql += "DROP TABLE IF EXISTS %s" % tablename
-    sql += "CASCADE;" if cascade else ";"
+    sql += "CASCADE;" if cascade else ";\n"
 
     sql += "CREATE TABLE %s (\n\t" % tablename
     cols = list()
@@ -363,10 +364,12 @@ def _create_table(sql, tablename, cascade, _tbl, f, default_to_null, default_use
     sql += ",\n\t".join(cols)
     sql += ");"
     if default_user is not None:
-        sql += "ALTER TABLE %s OWNER TO %s" % (tablename, default_user)
+        sql += "ALTER TABLE %s OWNER TO %s;\n" % (tablename, default_user)
     # TODO remove as this is basically duplicated in joinKeys, also pKey looks to never have
     # been flushed out, this is the only part that does anything, the copy part does nothing on pkey
     if pkey is not None:
-        sql += "ALTER TABLE %s ADD PRIMARY KEY (%s);" % (tablename, pkey)
+        sql += "ALTER TABLE %s ADD PRIMARY KEY (%s);\n" % (tablename, pkey)
     if uniquekey is not None:
-        sql += "ALTER TABLE %s ADD UNIQUE (%s);" % (tablename, uniquekey)
+        sql += "ALTER TABLE %s ADD UNIQUE (%s);\n" % (tablename, uniquekey)
+
+    return sql

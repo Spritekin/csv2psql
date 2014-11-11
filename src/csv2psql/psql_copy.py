@@ -97,6 +97,7 @@ def out_as_copy_stdin(fields, sql, tablename, delimiter, _tbl, exit_on_error=Fal
         sql += "\t".join(outrow)
     sql += "\\."
 
+    return sql
 
 def out_as_copy_csv(fields, sql, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
     """
@@ -142,6 +143,7 @@ def out_as_copy_csv(fields, sql, tablename, delimiter, _tbl, csvfilename, exit_o
                 _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
             except Exception as e:
                 _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
+    return sql
 
 
 def _handle_error(e, k, _k, row, index, dt, exit_on_error):
