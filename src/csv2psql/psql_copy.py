@@ -43,7 +43,7 @@ def _psqlencode(v, dt):
 
     # find odd quoted string
     if reg_matcher.match(v):
-        #if odd quote is first char
+        # if odd quote is first char
         if v[0] == '"':
             raise Exception("Bad terminated string!")
     s = ''
@@ -55,7 +55,7 @@ def _psqlencode(v, dt):
     return s
 
 
-def out_as_copy_stdin(fields, sql, tablename, delimiter, _tbl, exit_on_error=False):
+def out_as_copy_stdin(fields, tablename, delimiter, _tbl, exit_on_error=False):
     """
     :param fields:
     :param sql: sql String
@@ -73,6 +73,7 @@ def out_as_copy_stdin(fields, sql, tablename, delimiter, _tbl, exit_on_error=Fal
     slower as it require much more file IO when we already have the data in the CSV file itself. (Which PSQL can handle).
     There fore this is basically duplicating an existing CSV within a *.sql file.
     """
+    sql = ''
     nullStr = "NULL AS ''"
     sql += "\COPY {tablename} FROM stdin {nullhandle}".format(tablename=tablename, nullhandle=nullStr)
     f = fields
@@ -91,15 +92,16 @@ def out_as_copy_stdin(fields, sql, tablename, delimiter, _tbl, exit_on_error=Fal
                     dt = str
                 outrow.append(_psqlencode(row[k], dt))
             except ValueError as e:
-                _handle_error(e, k,  _k, row, index, dt, exit_on_error)
+                _handle_error(e, k, _k, row, index, dt, exit_on_error)
             except Exception as e:
-                _handle_error(e, k,  _k, row, index, dt, exit_on_error)
+                _handle_error(e, k, _k, row, index, dt, exit_on_error)
         sql += "\t".join(outrow)
     sql += "\\."
 
     return sql
 
-def out_as_copy_csv(fields, sql, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
+
+def out_as_copy_csv(fields, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
     """
     :param fields:
     :param sql: sql String
@@ -119,6 +121,7 @@ def out_as_copy_csv(fields, sql, tablename, delimiter, _tbl, csvfilename, exit_o
     would likely be fewer errors than successes. Thus lis I/O . Thus the \COPY statement here would point to a *.csv file
     and have the delimiter and Null checks attached.
     """
+    sql = ''
     # backup original file (to look for errors)
     copyfile(csvfilename, "orig_" + csvfilename)
     nullStr = "NULL AS \'\\N\'"

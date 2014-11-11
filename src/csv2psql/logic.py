@@ -177,7 +177,7 @@ def csv2psql(stream,
             default_user = None
 
     # pass 1
-    _tbl = dict()
+    _tbl = {}
     # always create temporary table
     f = csv.DictReader(stream, restval='', delimiter=delimiter)
     mangled_field_names = []
@@ -206,9 +206,16 @@ def csv2psql(stream,
         _sql += "SET client_min_messages TO ERROR;\n"
 
     if create_table and not skip:
+        create_ctr = 0
         logger.info(True, "-- CREATING TABLE\n")
-        _sql += _create_table(_sql, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial,
-                              timestamp)
+
+        _sql += _create_table(
+            tablename, cascade, _tbl, f, default_to_null,
+            default_user, pkey,
+            uniquekey, serial, timestamp)
+        create_ctr += 1
+        print "-- CREATE COUNTER: %s" % create_ctr
+
         _sql += sql_procedures.modified_time_procedure.procedure_str
         # _sql += sql_triggers.modified_time_trigger(tablename)
 
@@ -218,9 +225,9 @@ def csv2psql(stream,
     # pass 2
     if load_data and not skip:
         if is_std_in:
-            _sql += out_as_copy_stdin(f, _sql, tablename, delimiter, _tbl)
+            _sql += out_as_copy_stdin(f, tablename, delimiter, _tbl)
         else:
-            _sql += out_as_copy_csv(f, _sql, tablename, delimiter, _tbl, csv_filename)
+            _sql += out_as_copy_csv(f, tablename, delimiter, _tbl, csv_filename)
 
     if load_data and analyze_table and not skip:
         _sql += "ANALYZE %s;\n" % tablename
@@ -238,12 +245,12 @@ def csv2psql(stream,
 
         _sql += sql_alters.fast_delete_dupes(keys, key_name, tablename, True)
         # doing additional cols here as some types are not moved over correctly (with table copy in dupes)
-        _sql += additional_cols(_sql, tablename, serial, timestamp, mangled_field_names, is_merge)
+        _sql += additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge)
 
         _sql += sql_alters.make_primary_key_w_join(tablename, key_name, keys)
 
     if do_add_cols and joinkeys is None:
-        additional_cols(_sql, tablename, serial, timestamp, mangled_field_names, is_merge)
+        additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge)
 
     primary_key = pkey if pkey is not None else join_keys_key_name
     if is_array(primary_key):
@@ -263,16 +270,17 @@ def csv2psql(stream,
 
         _sql += sql_alters.merge(mangled_field_names, orig_tablename,
                                  primary_key, make_primary_key_first, tablename)
-
-    chained = chain(_sql)
-
-    if result_prints_std_out:
-        chained.pipe()
-    else:
-        assert postgres_url, "postgres_url undefined"
-        chained.to_postgres(postgres_url)
-
-    return chained
+    print _sql
+    # chained = chain(_sql)
+    #
+    # if result_prints_std_out:
+    # chained.pipe()
+    # else:
+    # assert postgres_url, "postgres_url undefined"
+    # chained.to_postgres(postgres_url)
+    #
+    # return chained
+    return _tbl
 
 
 def chain(sql, postgres_fn=to_postgres):
@@ -290,10 +298,11 @@ def chain(sql, postgres_fn=to_postgres):
     return obj
 
 
-def additional_cols(sql, tablename, serial, timestamp, mangled_field_names, is_merge):
+def additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge):
     '''
     Method add additional columns for sql gen, (sql_alters) and type checking (mangled_field_names)
     '''
+    sql=''
     # for alters in post processing temporary table to add columns
     cols_to_add_later = []
 
@@ -322,13 +331,14 @@ def is_array(var):
     return isinstance(var, (list, tuple))
 
 
-def _create_table(sql, tablename, cascade, _tbl, f, default_to_null, default_user, pkey, uniquekey, serial=None,
-                  timestamp=None):
+def _create_table(tablename, cascade, _tbl, f, default_to_null,
+                  default_user, pkey, uniquekey, serial=None, timestamp=None):
+    sql = ''
     sql += "DROP TABLE IF EXISTS %s" % tablename
     sql += "CASCADE;" if cascade else ";\n"
 
     sql += "CREATE TABLE %s (\n\t" % tablename
-    cols = list()
+    cols = []
     for k in f.fieldnames:
         _k = mangle(k)
         if _k is None or len(_k) < 1:
