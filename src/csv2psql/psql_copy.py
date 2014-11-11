@@ -66,25 +66,18 @@ def out_as_copy_stdin(fields, tablename, delimiter, _tbl, exit_on_error=False):
 
     Purpose is to ensure data integrity by checking original csv data against the intended type for a col/row.
 
-    Approach:
-    Output only valid rows that have the correct types. This is an easier approach from a coding standpoint, however it is
-    slower as it require much more file IO when we already have the data in the CSV file itself. (Which PSQL can handle).
-    There fore this is basically duplicating an existing CSV within a *.sql file.
+    Expects Piped Data to be Piped to psql
     """
-    for k, v in [('fields', fields), ('tablename', tablename), ('delimiter', delimiter), ('_tbl', _tbl)]:
-        logger.info(True, "out_as_copy_stdin: %s: %s" % (k, v))
+    # for k, v in [('fields', fields), ('tablename', tablename), ('delimiter', delimiter), ('_tbl', _tbl)]:
+    #     logger.info(True, "out_as_copy_stdin: %s: %s" % (k, v))
+
     sql = ''
     nullStr = "NULL AS ''"
-    sql += "\COPY {tablename} FROM stdin {nullhandle}".format(tablename=tablename, nullhandle=nullStr)
+    sql += "\COPY %s FROM stdin %s\n" % (tablename, nullStr)
 
-    logger.info(True, "fieldnames: %s" % fields.fieldnames)
-    logger.info(True, "LINE: %s" % fields.line_num)
-    # logger.info(True, "NEXT: %s" % fields.next())
     index = 0
     for row in fields:
-        logger.info(True, "row: %s" % row)
         index += 1
-        # we have to ensure that we're cleanly reading the input data
         outrow = []
         for k in fields.fieldnames:
             assert k in row
@@ -99,8 +92,9 @@ def out_as_copy_stdin(fields, tablename, delimiter, _tbl, exit_on_error=False):
                 _handle_error(e, k, _k, row, index, dt, exit_on_error)
             except Exception as e:
                 _handle_error(e, k, _k, row, index, dt, exit_on_error)
-        print outrow
+        # outrow = str(outrow)[1:-1] #remove [ ... ]
         sql += "\t".join(outrow)
+        sql += "\n"
     sql += "\\."
 
     return sql

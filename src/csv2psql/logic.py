@@ -227,7 +227,7 @@ def csv2psql(stream,
             default_user, pkey,
             uniquekey, serial, timestamp)
         create_ctr += 1
-        print "-- CREATE COUNTER: %s" % create_ctr
+        logger.info(True, "-- CREATE COUNTER: %s" % create_ctr)
 
         _sql += sql_procedures.modified_time_procedure.procedure_str
         # _sql += sql_triggers.modified_time_trigger(tablename)
