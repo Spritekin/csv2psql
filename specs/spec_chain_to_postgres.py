@@ -16,6 +16,10 @@ class MockConn:
         print "close"
         return
 
+    def commit(self):
+        print "commit"
+        return
+
 # Capture Stdio within a block
 #
 # http://stackoverflow.com/questions/5136611/capture-stdout-from-a-script-in-python
@@ -43,7 +47,7 @@ class MockToPostgres(to_postgres.ToPostgres):
 
 def mock_to_postgres(url, sql):
     print "in mock_to_postgres, url: " + url + "sql: " + sql
-    return MockToPostgres(url, sql)
+    return MockToPostgres(url, sql).process_sql()
 
 
 class ToPostgresSpec(unittest.TestCase):
