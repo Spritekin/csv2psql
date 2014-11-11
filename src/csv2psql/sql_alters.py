@@ -102,6 +102,7 @@ def delete_dupes(fieldnames, primary_key, temp_tablename, serial, debug=False):
         select_statement=this_select_str
     )
 
+
 def fast_delete_dupes(fieldnames, primary_key, temp_tablename, debug=False):
     if debug:
         logger.debug(True, "-- delete dupes")
@@ -113,11 +114,11 @@ def fast_delete_dupes(fieldnames, primary_key, temp_tablename, debug=False):
         specific_cols += "%s, " % key
     specific_cols = specific_cols[:-2]
 
-
     return delete_dups_fast_str.format(
         tablename=temp_tablename,
         cols=specific_cols,
     )
+
 
 def dupes_clause(fieldnames, primary_key, temp_tablename, serial):
     clause = ""
@@ -192,14 +193,20 @@ def merge(fieldnames, tablename, primary_key, make_primary_first, temp_tablename
     return bulk_upsert(fieldnames, tablename, primary_key, make_primary_first, temp_tablename)
 
 
-def pg_dump(db_name, schema_name, table_name, option="-s"):
+def pg_dump(db_name, schema_name, table_name, new_table_name=None, option="-s"):
     """
     see pg_dump_str
 
     This just executes pg_dump with popen and returns the output
     """
     cmd = pg_dump_str(db_name, schema_name, table_name, option)
-    return popen(cmd).read()
+    sql = popen(cmd).read()
+    if new_table_name:
+        pruned = table_name.split('.', 1)[-1]
+        logger.info(True, "PRUNED tablename: %s" % pruned)
+        sql = sql.replace(table_name, new_table_name)
+
+    return sql
 
 
 def add_col(name, type, tablename, additional=""):

@@ -189,7 +189,8 @@ def csv2psql(stream,
              result_prints_std_out=True,
              csv_filename=None,
              postgres_url=None,
-             append_sql=False):
+             append_sql=False,
+             new_table_name=None):
     # maybe copy?
     _sql = ''
     _copy_sql = None
@@ -217,14 +218,14 @@ def csv2psql(stream,
 
         # back_up stream / data
         data = ''
-        for line in stream:
-            data += line
+        if not skip:
+            data += get_stdin()
 
-        f = dict_reader(data, delimiter)
-        mangled_field_names = []
-        for key in f.fieldnames:
-            mangled_field_names.append(mangle(key))
-        _tbl = _sniffer(f, maxsniff, datatype)
+            f = dict_reader(data, delimiter)
+            mangled_field_names = []
+            for key in f.fieldnames:
+                mangled_field_names.append(mangle(key))
+            _tbl = _sniffer(f, maxsniff, datatype)
 
         # logger.info(True, "-- _tbl: %s" % _tbl)
 
@@ -296,7 +297,7 @@ def csv2psql(stream,
         # take temporary table and merge it into a real table
         if primary_key is not None and is_dump:
             if create_table and database_name:
-                _sql += sql_alters.pg_dump(database_name, schema, tablename)
+                _sql += sql_alters.pg_dump(database_name, schema, tablename, old_table_name)
                 # TODO re-order the primary_key to first column
 
         if is_merge and primary_key is not None:
@@ -315,7 +316,10 @@ def csv2psql(stream,
         _sql += get_stdin()
 
     if result_prints_std_out:
-        chained = chain(_sql + _copy_sql.to_psql())
+        c_sql = ''
+        if _copy_sql:
+            c_sql = _copy_sql.to_psql()
+        chained = chain(_sql + c_sql)
         chained.pipe()
     else:
         assert postgres_url, "postgres_url undefined"
@@ -323,7 +327,7 @@ def csv2psql(stream,
         chained = chain(_sql)
         chained.to_postgres(postgres_url)
         # send copied data
-        if not append_sql:
+        if not append_sql and _copy_sql:
             chained = chain(_copy_sql.copy_statement)
             chained.to_postgres_copy(postgres_url, _copy_sql.data)
 

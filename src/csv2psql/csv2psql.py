@@ -61,6 +61,8 @@ options include:
 
 --append_sql Indicates that stdin is reading in text to send straight to post gres
 
+--new_table_name=text Expected to be used with --dump , change old tablename to new_table_name
+
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
 CSV2PSQL_ROLE        default value for --role
@@ -138,7 +140,8 @@ def main(argv=None):
                                            "dates=", "tablename=", "databasename=",
                                            "is_dump=", "is_merge=", "primaryfirst=", "serial=",
                                            "timestamp=", "do_add_cols=", "analyze_table=",
-                                           "now", "postgres_url=", "append_sql"])
+                                           "now", "postgres_url=", "append_sql",
+                                           "new_table_name="])
         # print "opts: "
         # print opts
         # print "end opts"
@@ -220,6 +223,8 @@ def main(argv=None):
                 flags['postgres_url'] = a
             elif o in ("--append_sql"):
                 flags['append_sql'] = True
+            elif o in ("--new_table_name"):
+                flags['new_table_name'] = a.lower()
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 
