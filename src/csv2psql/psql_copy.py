@@ -8,6 +8,15 @@ import re
 reg_matcher = re.compile('^.*"((.*"){2})*.*$')
 
 
+class PsqlCopyData:
+    def __init__(self, copy_statement, data):
+        self.copy_statement = copy_statement
+        self.data = data
+
+    def to_psql(self):
+        return "\\%s%s\\.\n" % (self.copy_statement, self.data)
+
+
 def _psqlencode(v, dt):
     '''encodes using the text mode of PostgreSQL 8.4 "COPY FROM" command
 
@@ -55,6 +64,31 @@ def _psqlencode(v, dt):
     return s
 
 
+def _make_data(dict_reader, _tbl, exit_on_error=False):
+    data = ''
+    index = 0
+    for row in dict_reader:
+        index += 1
+        outrow = []
+        for k in dict_reader.fieldnames:
+            assert k in row
+            try:
+                _k = mangle(k)
+                if _k in _tbl and 'type' in _tbl[_k]:
+                    dt = _tbl[_k]['type']
+                else:
+                    dt = str
+                outrow.append(_psqlencode(row[k], dt))
+            except ValueError as e:
+                _handle_error(e, k, _k, row, index, dt, exit_on_error)
+            except Exception as e:
+                _handle_error(e, k, _k, row, index, dt, exit_on_error)
+        data += "\t".join(outrow)
+        data += "\n"
+
+    return data
+
+
 def out_as_copy_stdin(fields, tablename, delimiter, _tbl, exit_on_error=False):
     """
     :param fields:
@@ -69,35 +103,13 @@ def out_as_copy_stdin(fields, tablename, delimiter, _tbl, exit_on_error=False):
     Expects Piped Data to be Piped to psql
     """
     # for k, v in [('fields', fields), ('tablename', tablename), ('delimiter', delimiter), ('_tbl', _tbl)]:
-    #     logger.info(True, "out_as_copy_stdin: %s: %s" % (k, v))
+    # logger.info(True, "out_as_copy_stdin: %s: %s" % (k, v))
 
-    sql = ''
+
     nullStr = "NULL AS ''"
-    sql += "\COPY %s FROM stdin %s\n" % (tablename, nullStr)
-
-    index = 0
-    for row in fields:
-        index += 1
-        outrow = []
-        for k in fields.fieldnames:
-            assert k in row
-            try:
-                _k = mangle(k)
-                if _k in _tbl and 'type' in _tbl[_k]:
-                    dt = _tbl[_k]['type']
-                else:
-                    dt = str
-                outrow.append(_psqlencode(row[k], dt))
-            except ValueError as e:
-                _handle_error(e, k, _k, row, index, dt, exit_on_error)
-            except Exception as e:
-                _handle_error(e, k, _k, row, index, dt, exit_on_error)
-        # outrow = str(outrow)[1:-1] #remove [ ... ]
-        sql += "\t".join(outrow)
-        sql += "\n"
-    sql += "\\."
-
-    return sql
+    copy_statement = "COPY %s FROM stdin %s\n" % (tablename, nullStr)
+    data = _make_data(fields, _tbl, exit_on_error)
+    return PsqlCopyData(copy_statement, data)
 
 
 def out_as_copy_csv(fields, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
@@ -119,32 +131,15 @@ def out_as_copy_csv(fields, tablename, delimiter, _tbl, csvfilename, exit_on_err
     would likely be fewer errors than successes. Thus lis I/O . Thus the \COPY statement here would point to a *.csv file
     and have the delimiter and Null checks attached.
     """
-    sql = ''
     # backup original file (to look for errors)
     copyfile(csvfilename, "orig_" + csvfilename)
     nullStr = "NULL AS \'\\N\'"
     # HEADER CSV , for csv skip header
-    sql += "\COPY {tablename} FROM '{csvfilename}' {nullhandle} CSV HEADER DELIMITER '{delimiter}';".format(
+    copy_statement = "\COPY {tablename} FROM '{csvfilename}' {nullhandle} CSV HEADER DELIMITER '{delimiter}';".format(
         csvfilename=csvfilename, tablename=tablename, nullhandle=nullStr, delimiter=delimiter)
 
-    index = 0
-    for row in fields:
-        index += 1
-        # we have to ensure that we're cleanly reading the input data
-        for k in fields.fieldnames:
-            assert k in row
-            try:
-                _k = mangle(k)
-                if _k in _tbl and 'type' in _tbl[_k]:
-                    dt = _tbl[_k]['type']
-                else:
-                    dt = str
-                _psqlencode(row[k], dt)
-            except ValueError as e:
-                _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
-            except Exception as e:
-                _handle_error(e, k, csvfilename, _k, row, index, dt, exit_on_error)
-    return sql
+    data = _make_data(fields, _tbl, exit_on_error)
+    return PsqlCopyData(copy_statement, data)
 
 
 def _handle_error(e, k, _k, row, index, dt, exit_on_error):

@@ -10,7 +10,7 @@ import sql_triggers
 from column import *
 import logger
 from psql_copy import out_as_copy_stdin, out_as_copy_csv
-from to_postgres import to_postgres
+from to_postgres import to_postgres, to_postgres_copy
 from dict_to_obj import to_obj
 from cStringIO import StringIO
 
@@ -148,7 +148,7 @@ def csv2psql(stream,
              pkey=None,
              quiet=True,
              schema=None,
-             strip_prefix=True,
+             strip_prefix=False,
              truncate_table=False,
              uniquekey=None,
              database_name='',
@@ -166,6 +166,7 @@ def csv2psql(stream,
              postgres_url=None):
     # maybe copy?
     _sql = ''
+    _copy_sql = None
     orig_tablename = tablename + ""
     skip = is_merge or is_dump
 
@@ -210,7 +211,8 @@ def csv2psql(stream,
             tablename = tablename[len(schema) + 1:]
             while not tablename[0].isalpha():
                 tablename = tablename[1:]
-
+        elif not tablename.startswith(schema):
+            tablename = "%s.%s" % (schema, tablename)
     # add explicit client encoding
     if force_utf8:
         _sql += "\\encoding UTF8\n"
@@ -238,9 +240,9 @@ def csv2psql(stream,
     # pass 2
     if load_data and not skip:
         if is_std_in:
-            _sql += out_as_copy_stdin(dict_reader(data, delimiter), tablename, delimiter, _tbl)
+            _copy_sql = out_as_copy_stdin(dict_reader(data, delimiter), tablename, delimiter, _tbl)
         else:
-            _sql += out_as_copy_csv(dict_reader(data, delimiter), tablename, delimiter, _tbl, csv_filename)
+            _copy_sql = out_as_copy_csv(dict_reader(data, delimiter), tablename, delimiter, _tbl, csv_filename)
 
     if load_data and analyze_table and not skip:
         _sql += "ANALYZE %s;\n" % tablename
@@ -283,22 +285,30 @@ def csv2psql(stream,
 
         _sql += sql_alters.merge(mangled_field_names, orig_tablename,
                                  primary_key, make_primary_key_first, tablename)
-    logger.info(True, _sql)
-    # chained = chain(_sql)
-    #
-    # if result_prints_std_out:
-    # chained.pipe()
-    # else:
-    # assert postgres_url, "postgres_url undefined"
-    # chained.to_postgres(postgres_url)
-    #
-    # return chained
-    return _tbl
+    # logger.info(True, _sql)
+
+    if result_prints_std_out:
+        chained = chain(_sql + _copy_sql.to_psql())
+        chained.pipe()
+    else:
+        assert postgres_url, "postgres_url undefined"
+        # first send regular sql, if we have it
+        if _sql:
+            chained = chain(_sql)
+            chained.to_postgres(postgres_url)
+        # send copied data
+        chained = chain(_copy_sql.copy_statement)
+        chained.to_postgres_copy(postgres_url, _copy_sql.data)
+
+    return chained
 
 
-def chain(sql, postgres_fn=to_postgres):
+def chain(sql, postgres_fn=to_postgres, postgres_copy_fn=to_postgres_copy):
     def call_postgres(url):
-        return postgres_fn(url, sql).result
+        return postgres_fn(url, sql)
+
+    def call_postgres_copy(url, data):
+        return postgres_copy_fn(url, sql, StringIO(data))
 
     def pipe_to_std_out():
         print sql
@@ -306,7 +316,8 @@ def chain(sql, postgres_fn=to_postgres):
     obj = to_obj({
         "pipe": pipe_to_std_out,
         "sql": sql,
-        "to_postgres": call_postgres
+        "to_postgres": call_postgres,
+        "to_postgres_copy": call_postgres_copy
     })
     return obj
 
