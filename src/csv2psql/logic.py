@@ -218,7 +218,7 @@ def csv2psql(stream,
 
         # back_up stream / data
         data = ''
-        if not skip:
+        if not skip or is_merge:
             data += get_stdin()
 
             f = dict_reader(data, delimiter)
@@ -297,7 +297,7 @@ def csv2psql(stream,
         # take temporary table and merge it into a real table
         if primary_key is not None and is_dump:
             if create_table and database_name:
-                _sql += sql_alters.pg_dump(database_name, schema, tablename, old_table_name)
+                _sql += sql_alters.pg_dump(database_name, schema, tablename, new_table_name)
                 # TODO re-order the primary_key to first column
 
         if is_merge and primary_key is not None:
