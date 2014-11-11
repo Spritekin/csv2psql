@@ -59,6 +59,8 @@ options include:
 
 --do_add_cols - indicator to add modified_time, and other cols (timestamp,serial) . To delay till last run
 
+--append_sql Indicates that stdin is reading in text to send straight to post gres
+
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
 CSV2PSQL_ROLE        default value for --role
@@ -136,7 +138,7 @@ def main(argv=None):
                                            "dates=", "tablename=", "databasename=",
                                            "is_dump=", "is_merge=", "primaryfirst=", "serial=",
                                            "timestamp=", "do_add_cols=", "analyze_table=",
-                                           "now", "postgres_url="])
+                                           "now", "postgres_url=", "append_sql"])
         # print "opts: "
         # print opts
         # print "end opts"
@@ -213,13 +215,15 @@ def main(argv=None):
             elif o in ("--analyze_table"):
                 flags["analyze_table"] = True if a.lower() == 'true' else False
             elif o in ("--now"):
-                flags["result_prints_std_out"] = False #inverse of now
+                flags["result_prints_std_out"] = False  # inverse of now
             elif o in ("--postgres_url"):
                 flags['postgres_url'] = a
+            elif o in ("--append_sql"):
+                flags['append_sql'] = True
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 
-        # print "-- flags: %s" % flags
+        print "-- flags: %s" % flags
 
         if not tablename:
             assert False, 'tablename is required via --tablename'
@@ -227,7 +231,6 @@ def main(argv=None):
         if flags.has_key('postgres_url'):
             if not flags.has_key('result_prints_std_out') or (flags["result_prints_std_out"] and flags['postgres_url']):
                 assert False, '--postgres_url required if --now is specified'
-
 
         print "-- tablename %s" % tablename
         tablename = mangle_table(tablename)

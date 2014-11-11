@@ -68,6 +68,8 @@ options include:
 
 --do_add_cols - indicator to add modified_time, and other cols (timestamp,serial) . To delay till last run
 
+--append_sql Indicates that stdin is reading in text to send straight to post gres
+
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
 CSV2PSQL_ROLE        default value for --role
