@@ -195,9 +195,10 @@ def csv2psql(stream,
              delete_temp_table=False):
     # maybe copy?
     _sql = ''
-    _copy_sql = None
-    drop_temp_table_sql = None
+    _copy_sql = ''
+    drop_temp_table_sql = ''
     _alter_sql = ''
+
     orig_tablename = tablename + ""
     skip = is_merge or is_dump
 
