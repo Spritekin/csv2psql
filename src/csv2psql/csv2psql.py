@@ -65,6 +65,8 @@ options include:
 
 - skipp_stored_proc_modified_time  (defaults to False)
 
+-delete_temp_table Defaults False
+
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
 CSV2PSQL_ROLE        default value for --role
@@ -143,7 +145,8 @@ def main(argv=None):
                                            "is_dump=", "is_merge=", "primaryfirst=", "serial=",
                                            "timestamp=", "do_add_cols=", "analyze_table=",
                                            "now", "postgres_url=", "append_sql",
-                                           "new_table_name=", "skipp_stored_proc_modified_time"])
+                                           "new_table_name=", "skipp_stored_proc_modified_time",
+                                           "delete_temp_table"])
         # print "opts: "
         # print opts
         # print "end opts"
@@ -229,7 +232,8 @@ def main(argv=None):
                 flags['new_table_name'] = a.lower()
             elif o in ("--skipp_stored_proc_modified_time"):
                 flags['skipp_stored_proc_modified_time'] = True
-
+            elif o in ("--delete_temp_table"):
+                flags['delete_temp_table'] = True
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 

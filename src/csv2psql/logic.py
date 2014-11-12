@@ -191,7 +191,8 @@ def csv2psql(stream,
              postgres_url=None,
              append_sql=False,
              new_table_name=None,
-             skipp_stored_proc_modified_time=False):
+             skipp_stored_proc_modified_time=False,
+             delete_temp_table=False):
     # maybe copy?
     _sql = ''
     _copy_sql = None
@@ -313,6 +314,10 @@ def csv2psql(stream,
 
             _sql += sql_alters.merge(mangled_field_names, orig_tablename,
                                      primary_key, make_primary_key_first, tablename, new_table_name)
+
+            if delete_temp_table:
+                logger.info(True, "dropping temp table: %s" % tablename)
+                _sql = "DROP TABLE %s" % tablename
             # logger.info(True, _sql)
 
     if append_sql:
