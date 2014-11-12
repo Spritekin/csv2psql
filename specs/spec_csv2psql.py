@@ -33,13 +33,13 @@ class SqlAlterSpec(unittest.TestCase):
 
     def test_join_keys(self):
         sql_alters._join_keys(['one', 'two', 'three']) \
-        | should | equal_to("one || '-' || two || '-' || three")
+        | should | equal_to("one || '_' || two || '_' || three")
 
     def test_make_primary_key_w_join(self):
         sql_alters.make_primary_key_w_join("db", "new_key", ['one', 'two', 'three']) | should | \
         equal_to(dedent("""
         ALTER TABLE db ADD COLUMN new_key VARCHAR(200);
-        UPDATE db SET new_key = (one || '-' || two || '-' || three);
+        UPDATE db SET new_key = (one || '_' || two || '_' || three);
 
         DELETE FROM db
         WHERE one IS NULL OR two IS NULL OR three IS NULL;

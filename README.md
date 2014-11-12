@@ -70,6 +70,8 @@ options include:
 
 --append_sql Indicates that stdin is reading in text to send straight to post gres
 
+--new_table_name=text Expected to be used with --dump , change old tablename to new_table_name
+
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
 CSV2PSQL_ROLE        default value for --role
