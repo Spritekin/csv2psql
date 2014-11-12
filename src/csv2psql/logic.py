@@ -196,6 +196,7 @@ def csv2psql(stream,
     # maybe copy?
     _sql = ''
     _copy_sql = None
+    drop_temp_table_sql = None
     _alter_sql = ''
     orig_tablename = tablename + ""
     skip = is_merge or is_dump
@@ -257,7 +258,6 @@ def csv2psql(stream,
             create_ctr += 1
             logger.info(True, "-- CREATE COUNTER: %s" % create_ctr)
 
-
             _sql += sql_procedures.modified_time_procedure.procedure_str
             # _s1ql += sql_triggers.modified_time_trigger(tablename)
 
@@ -317,8 +317,8 @@ def csv2psql(stream,
 
             if delete_temp_table:
                 logger.info(True, "dropping temp table: %s" % tablename)
-                _sql += "DROP TABLE %s" % tablename
-            # logger.info(True, _sql)
+                drop_temp_table_sql = "DROP TABLE %s;" % tablename
+                # logger.info(True, _sql)
 
     if append_sql:
         obj = get_schema_sql(schema, tablename, strip_prefix, skip)
@@ -329,7 +329,7 @@ def csv2psql(stream,
         c_sql = ''
         if _copy_sql:
             c_sql = _copy_sql.to_psql()
-        chained = chain(_sql + c_sql + _alter_sql)
+        chained = chain(_sql + c_sql + _alter_sql + drop_temp_table_sql)
         chained.pipe()
     else:
         assert postgres_url, "postgres_url undefined"
@@ -340,8 +340,10 @@ def csv2psql(stream,
         if not append_sql and _copy_sql:
             chained = chain(_copy_sql.copy_statement)
             chained.to_postgres_copy(postgres_url, _copy_sql.data)
-        chained.to_postgres(postgres_url, _alter_sql)
-
+        if _alter_sql:
+            chained.to_postgres(postgres_url, _alter_sql)
+        if drop_temp_table_sql:
+            chained.to_postgres(postgres_url, drop_temp_table_sql)
     return chained
 
 
