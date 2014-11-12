@@ -18,14 +18,14 @@ def verify_dates(table_name, date_format, cols):
                                    not_nulls=not_nulls_str)
 
 
-def _join_keys(keys_to_join):
+def _join_keys(keys_to_join, join_char= '_'):
     joined_str = ""
     i = 0
     length = len(keys_to_join)
     for key in keys_to_join:
         i += 1
         if not i == length:
-            joined_str += key + " || '-' || "
+            joined_str += key + " || '%s' || " % join_char
         else:
             joined_str += key
     return joined_str
