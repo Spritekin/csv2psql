@@ -317,7 +317,7 @@ def csv2psql(stream,
 
             if delete_temp_table:
                 logger.info(True, "dropping temp table: %s" % tablename)
-                _sql = "DROP TABLE %s" % tablename
+                _sql += "DROP TABLE %s" % tablename
             # logger.info(True, _sql)
 
     if append_sql:
