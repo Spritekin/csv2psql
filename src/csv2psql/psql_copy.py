@@ -2,7 +2,6 @@ import logger
 import sys
 from shutil import copyfile
 from mangle import *
-from bad_lines import remove_bad_line_number
 import re
 
 reg_matcher = re.compile('^.*"((.*"){2})*.*$')
@@ -64,7 +63,7 @@ def _psqlencode(v, dt):
     return s
 
 
-def _make_data(dict_reader, _tbl, exit_on_error=False):
+def _make_data(dict_reader, _tbl, tablename, exit_on_error=False):
     data = ''
     index = 0
     for row in dict_reader:
@@ -80,9 +79,9 @@ def _make_data(dict_reader, _tbl, exit_on_error=False):
                     dt = str
                 outrow.append(_psqlencode(row[k], dt))
             except ValueError as e:
-                _handle_error(e, k, _k, row, index, dt, exit_on_error)
+                _handle_error(e, k, _k, row, index, dt, tablename, exit_on_error)
             except Exception as e:
-                _handle_error(e, k, _k, row, index, dt, exit_on_error)
+                _handle_error(e, k, _k, row, index, dt, tablename, exit_on_error)
         data += "\t".join(outrow)
         data += "\n"
 
@@ -108,7 +107,7 @@ def out_as_copy_stdin(fields, tablename, delimiter, _tbl, exit_on_error=False):
 
     nullStr = "NULL AS ''"
     copy_statement = "COPY %s FROM stdin %s\n" % (tablename, nullStr)
-    data = _make_data(fields, _tbl, exit_on_error)
+    data = _make_data(fields, _tbl, tablename, exit_on_error)
     return PsqlCopyData(copy_statement, data)
 
 
@@ -138,21 +137,17 @@ def out_as_copy_csv(fields, tablename, delimiter, _tbl, csvfilename, exit_on_err
     copy_statement = "\COPY {tablename} FROM '{csvfilename}' {nullhandle} CSV HEADER DELIMITER '{delimiter}';".format(
         csvfilename=csvfilename, tablename=tablename, nullhandle=nullStr, delimiter=delimiter)
 
-    data = _make_data(fields, _tbl, exit_on_error)
+    data = _make_data(fields, _tbl, tablename, exit_on_error)
     return PsqlCopyData(copy_statement, data)
 
 
-def _handle_error(e, k, _k, row, index, dt, exit_on_error):
-    pass
-    logger.error(False, 'CSV ERROR:')
-    details = {"k": k, "_k": _k, "error_type": type(e), "error": e}
-    logger.error(False, '', '', details)
+def _handle_error(e, k, _k, row, index, dt, tablename, exit_on_error):
+    # details = {"k": k, "_k": _k, "error_type": type(e), "error": e}
+    # logger.error(False, '', '', details)
+    logger.error(False, "CSV ERROR: skipping line for table: %s" % tablename)
     logger.error(False, "row: %s" % row)
-    logger.error(False, "row#: {rownum}, col: {col}, type: {type}, value: {value}".format(
-        rownum=index, col=k, type=dt, value=row[k]
-    ))
+    logger.error(False, "row#: %s, col: %s, type: %s, value: %s" % (index, k, dt, row[k]))
 
     if exit_on_error:
         logger.critical(True, "exit_on_error for row is true, exiting!")
         sys.exit(1)
-    #remove_bad_line_number(index)
