@@ -13,12 +13,21 @@ __handler.setFormatter(__formatter)
 logger.addHandler(__handler)
 
 
+def _swallow(fn):
+    try:
+        fn()
+    except Exception as e:
+        _error = e
+        # ignore TDOD figure out where error is happening
+
+
 def info(do_print, msg, *args, **kwargs):
     """
     See log_print
     """
     fn = lambda: logger.info(msg, *args, **kwargs)
-    log_print(do_print, msg, fn, *args, **kwargs)
+
+    _swallow(log_print(do_print, msg, fn, *args, **kwargs))
 
 
 def debug(do_print, msg, *args, **kwargs):
@@ -26,7 +35,7 @@ def debug(do_print, msg, *args, **kwargs):
     See log_print
     """
     fn = lambda: logger.debug(msg, *args, **kwargs)
-    log_print(do_print, msg, fn, *args, **kwargs)
+    _swallow(log_print(do_print, msg, fn, *args, **kwargs))
 
 
 def warning(do_print, msg, *args, **kwargs):
@@ -34,7 +43,7 @@ def warning(do_print, msg, *args, **kwargs):
     See log_print
     """
     fn = lambda: logger.warning(msg, *args, **kwargs)
-    log_print(do_print, msg, fn, *args, **kwargs)
+    _swallow(log_print(do_print, msg, fn, *args, **kwargs))
 
 
 def error(do_print, msg, *args, **kwargs):
@@ -42,7 +51,7 @@ def error(do_print, msg, *args, **kwargs):
     See log_print
     """
     fn = lambda: logger.error(msg, *args, **kwargs)
-    log_print(do_print, msg, fn, *args, **kwargs)
+    _swallow(log_print(do_print, msg, fn, *args, **kwargs))
 
 
 def critical(do_print, msg, *args, **kwargs):
@@ -50,7 +59,7 @@ def critical(do_print, msg, *args, **kwargs):
     See log_print
     """
     fn = lambda: logger.critical(msg, *args, **kwargs)
-    log_print(do_print, msg, fn, *args, **kwargs)
+    _swallow(log_print(do_print, msg, fn, *args, **kwargs))
 
 
 def log_print(do_print, msg, fn, *args, **kwargs):

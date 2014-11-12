@@ -155,4 +155,4 @@ def _handle_error(e, k, _k, row, index, dt, exit_on_error):
     if exit_on_error:
         logger.critical(True, "exit_on_error for row is true, exiting!")
         sys.exit(1)
-    remove_bad_line_number(index)
+    #remove_bad_line_number(index)
