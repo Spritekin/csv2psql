@@ -190,7 +190,8 @@ def csv2psql(stream,
              csv_filename=None,
              postgres_url=None,
              append_sql=False,
-             new_table_name=None):
+             new_table_name=None,
+             skipp_stored_proc_modified_time=False):
     # maybe copy?
     _sql = ''
     _copy_sql = None
@@ -255,8 +256,9 @@ def csv2psql(stream,
             create_ctr += 1
             logger.info(True, "-- CREATE COUNTER: %s" % create_ctr)
 
+
             _sql += sql_procedures.modified_time_procedure.procedure_str
-            # _sql += sql_triggers.modified_time_trigger(tablename)
+            # _s1ql += sql_triggers.modified_time_trigger(tablename)
 
         if truncate_table and not load_data and not skip:
             _sql += "TRUNCATE TABLE %s;\n" % tablename
@@ -305,10 +307,12 @@ def csv2psql(stream,
             logger.info(True, "-- mangled_field_names: %s" % mangled_field_names)
             logger.info(True, "-- make_primary_key_first %s" % make_primary_key_first)
 
-            _sql += sql_triggers.modified_time_trigger(orig_tablename)
+            time_tablename = new_table_name if new_table_name else orig_tablename
+            if not skipp_stored_proc_modified_time:
+                _sql += sql_triggers.modified_time_trigger(time_tablename)
 
             _sql += sql_alters.merge(mangled_field_names, orig_tablename,
-                                     primary_key, make_primary_key_first, tablename)
+                                     primary_key, make_primary_key_first, tablename, new_table_name)
             # logger.info(True, _sql)
 
     if append_sql:

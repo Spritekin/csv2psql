@@ -18,7 +18,7 @@ def verify_dates(table_name, date_format, cols):
                                    not_nulls=not_nulls_str)
 
 
-def _join_keys(keys_to_join, join_char= '_'):
+def _join_keys(keys_to_join, join_char='_'):
     joined_str = ""
     i = 0
     length = len(keys_to_join)
@@ -167,14 +167,16 @@ def _make_selects(fieldnames, primary_key, temp_tablename, make_primary_first, j
     return str[:-1]
 
 
-def bulk_upsert(fieldnames, tablename, primary_key, make_primary_first, temp_tablename=''):
+def bulk_upsert(fieldnames, tablename, primary_key, make_primary_first, temp_tablename=None, new_tablename=None):
     if not temp_tablename:
         temp_tablename = "temp_" + tablename
+
+    perm_tablename = new_tablename if new_tablename else tablename
     sets = _make_set(fieldnames, primary_key, temp_tablename, make_primary_first)
     selects = _make_selects(fieldnames, primary_key, temp_tablename, make_primary_first)
     cols = _make_selects(fieldnames, primary_key, temp_tablename, make_primary_first, True)
 
-    ret = bulk_upsert_str.format(perm_table=tablename,
+    ret = bulk_upsert_str.format(perm_table=perm_tablename,
                                  cols=cols,
                                  temp_table=temp_tablename,
                                  sets=sets,
@@ -183,14 +185,14 @@ def bulk_upsert(fieldnames, tablename, primary_key, make_primary_first, temp_tab
     return ret
 
 
-def merge(fieldnames, tablename, primary_key, make_primary_first, temp_tablename, do_log=False):
+def merge(fieldnames, tablename, primary_key, make_primary_first, temp_tablename, new_tablename=None, do_log=False):
     if do_log:
         logger.debug(True, "-- tablename: %s" % tablename)
         logger.debug(True, "-- fieldnames: %s" % fieldnames)
         logger.debug(True, "-- primary_key: %s" % primary_key)
         logger.debug(True, "-- temp_tablename: %s" % temp_tablename)
 
-    return bulk_upsert(fieldnames, tablename, primary_key, make_primary_first, temp_tablename)
+    return bulk_upsert(fieldnames, tablename, primary_key, make_primary_first, temp_tablename, new_tablename)
 
 
 def pg_dump(db_name, schema_name, table_name, new_table_name=None, option="-s"):
@@ -204,7 +206,7 @@ def pg_dump(db_name, schema_name, table_name, new_table_name=None, option="-s"):
     if new_table_name:
         pruned = table_name.split('.', 1)[-1]
         logger.info(True, "PRUNED tablename: %s" % pruned)
-        sql = sql.replace(table_name, new_table_name)
+        sql = sql.replace(table_name.lower(), new_table_name)
 
     return sql
 
