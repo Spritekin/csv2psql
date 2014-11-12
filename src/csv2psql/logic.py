@@ -194,6 +194,7 @@ def csv2psql(stream,
     # maybe copy?
     _sql = ''
     _copy_sql = None
+    _alter_sql = ''
     orig_tablename = tablename + ""
     skip = is_merge or is_dump
 
@@ -273,7 +274,7 @@ def csv2psql(stream,
         # fix bad dates ints or stings to correct int format
         if dates is not None:
             for date_format, cols in dates.iteritems():
-                _sql += sql_alters.dates(tablename, cols, date_format)
+                _alter_sql += sql_alters.dates(tablename, cols, date_format)
 
         # take cols and merge them into one primary_key
         join_keys_key_name = None
@@ -281,14 +282,14 @@ def csv2psql(stream,
             (keys, key_name) = joinkeys
             join_keys_key_name = key_name
 
-            _sql += sql_alters.fast_delete_dupes(keys, key_name, tablename, True)
+            _alter_sql += sql_alters.fast_delete_dupes(keys, key_name, tablename, True)
             # doing additional cols here as some types are not moved over correctly (with table copy in dupes)
-            _sql += additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge)
+            _alter_sql += additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge)
 
-            _sql += sql_alters.make_primary_key_w_join(tablename, key_name, keys)
+            _alter_sql += sql_alters.make_primary_key_w_join(tablename, key_name, keys)
 
         if do_add_cols and joinkeys is None:
-            additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge)
+            _alter_sql = additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge)
 
         primary_key = pkey if pkey is not None else join_keys_key_name
         if is_array(primary_key):
@@ -297,7 +298,7 @@ def csv2psql(stream,
         # take temporary table and merge it into a real table
         if primary_key is not None and is_dump:
             if create_table and database_name:
-                _sql += sql_alters.pg_dump(database_name, schema, tablename, new_table_name)
+                _alter_sql += sql_alters.pg_dump(database_name, schema, tablename, new_table_name)
                 # TODO re-order the primary_key to first column
 
         if is_merge and primary_key is not None:
@@ -319,7 +320,7 @@ def csv2psql(stream,
         c_sql = ''
         if _copy_sql:
             c_sql = _copy_sql.to_psql()
-        chained = chain(_sql + c_sql)
+        chained = chain(_sql + c_sql + _alter_sql)
         chained.pipe()
     else:
         assert postgres_url, "postgres_url undefined"
@@ -330,13 +331,15 @@ def csv2psql(stream,
         if not append_sql and _copy_sql:
             chained = chain(_copy_sql.copy_statement)
             chained.to_postgres_copy(postgres_url, _copy_sql.data)
+        chained.to_postgres(postgres_url, _alter_sql)
 
     return chained
 
 
 def chain(sql, postgres_fn=to_postgres, postgres_copy_fn=to_postgres_copy):
-    def call_postgres(url):
-        return postgres_fn(url, sql)
+    def call_postgres(url, local_sql):
+        sql_to_run = sql if not local_sql else local_sql
+        return postgres_fn(url, sql_to_run)
 
     def call_postgres_copy(url, data):
         return postgres_copy_fn(url, sql, StringIO(data))
