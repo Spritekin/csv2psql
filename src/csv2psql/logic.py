@@ -337,7 +337,7 @@ def csv2psql(stream,
 
 
 def chain(sql, postgres_fn=to_postgres, postgres_copy_fn=to_postgres_copy):
-    def call_postgres(url, local_sql):
+    def call_postgres(url, local_sql=None):
         sql_to_run = sql if not local_sql else local_sql
         return postgres_fn(url, sql_to_run)
 
