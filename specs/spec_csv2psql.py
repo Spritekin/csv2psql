@@ -120,17 +120,17 @@ class SqlAlterSpec(unittest.TestCase):
 
 
     def test_fast_delete_dupes(self):
-        sql_alters.fast_delete_dupes(["one", "two"], "key", "table1") | should | equal_to(dedent(
+        sql_alters.fast_delete_dupes(["one", "two"], "key", "public.table1") | should | equal_to(dedent(
             """
-            CREATE TABLE TMP_TABLE AS
+            CREATE TABLE TMP_TABLE_table1 AS
             SELECT DISTINCT ON (one, two) *
             FROM table1;
 
-            SELECT (SELECT COUNT(*) as val1 FROM table1) - (SELECT COUNT(*) AS val2 FROM TMP_TABLE) AS DUPES;
+            SELECT (SELECT COUNT(*) as val1 FROM table1) - (SELECT COUNT(*) AS val2 FROM TMP_TABLE_table1) AS DUPES;
 
             DROP TABLE table1;
             CREATE TABLE table1 AS
-            SELECT DISTINCT * FROM TMP_TABLE;
-            DROP TABLE TMP_TABLE;
+            SELECT DISTINCT * FROM TMP_TABLE_table1;
+            DROP TABLE TMP_TABLE_table1;
             """
         ))

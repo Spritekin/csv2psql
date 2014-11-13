@@ -73,16 +73,16 @@ SELECT {specific_cols}
 """
 
 delete_dups_fast_str = """
-CREATE TABLE TMP_TABLE AS
+CREATE TABLE TMP_TABLE_{tablename} AS
 SELECT DISTINCT ON ({cols}) *
 FROM {tablename};
 
-SELECT (SELECT COUNT(*) as val1 FROM {tablename}) - (SELECT COUNT(*) AS val2 FROM TMP_TABLE) AS DUPES;
+SELECT (SELECT COUNT(*) as val1 FROM {tablename}) - (SELECT COUNT(*) AS val2 FROM TMP_TABLE_{tablename}) AS DUPES;
 
 DROP TABLE {tablename};
 CREATE TABLE {tablename} AS
-SELECT DISTINCT * FROM TMP_TABLE;
-DROP TABLE TMP_TABLE;
+SELECT DISTINCT * FROM TMP_TABLE_{tablename};
+DROP TABLE TMP_TABLE_{tablename};
 """
 
 count_dups_str = "\nSELECT COUNT(*) AS DUPES" + select_dupes_str + ";"

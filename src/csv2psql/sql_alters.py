@@ -114,6 +114,8 @@ def fast_delete_dupes(fieldnames, primary_key, temp_tablename, debug=False):
         specific_cols += "%s, " % key
     specific_cols = specific_cols[:-2]
 
+    head, sep, tail = temp_tablename.partition(".")
+    temp_tablename = tail
     return delete_dups_fast_str.format(
         tablename=temp_tablename,
         cols=specific_cols,

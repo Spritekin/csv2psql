@@ -72,6 +72,10 @@ options include:
 
 --new_table_name=text Expected to be used with --dump , change old tablename to new_table_name
 
+- skipp_stored_proc_modified_time  (defaults to False)
+
+-delete_temp_table Defaults False
+
 environment variables:
 CSV2PSQL_SCHEMA      default value for --schema
 CSV2PSQL_ROLE        default value for --role
