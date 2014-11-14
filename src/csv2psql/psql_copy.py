@@ -69,7 +69,7 @@ def validify_date_len(dates, k, _tbl):
     for date_format, cols in dates.iteritems():
         if not k in cols:
             val = _tbl[k].to_s
-            if len(date_format) != len(val):
+            if len(date_format) != len(str(val)):
                 raise Exception("Date format length does not match format: % for value %" % (date_format, val))
 
 
