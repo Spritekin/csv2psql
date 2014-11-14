@@ -268,9 +268,10 @@ def csv2psql(stream,
         # pass 2
         if load_data and not skip:
             if is_std_in:
-                _copy_sql = out_as_copy_stdin(dict_reader(data, delimiter), tablename, delimiter, _tbl)
+                _copy_sql = out_as_copy_stdin(dict_reader(data, delimiter), tablename, delimiter, _tbl, dates)
             else:
-                _copy_sql = out_as_copy_csv(dict_reader(data, delimiter), tablename, delimiter, _tbl, csv_filename)
+                _copy_sql = out_as_copy_csv(dict_reader(data, delimiter), tablename, delimiter, _tbl, csv_filename,
+                                            dates)
 
         if load_data and analyze_table and not skip:
             _sql += "ANALYZE %s;\n" % tablename

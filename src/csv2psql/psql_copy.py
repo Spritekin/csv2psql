@@ -63,7 +63,17 @@ def _psqlencode(v, dt):
     return s
 
 
-def _make_data(dict_reader, _tbl, tablename, exit_on_error=False):
+def validify_date_len(dates, k, _tbl):
+    if not dates:
+        return
+    for date_format, cols in dates.iteritems():
+        if not k in cols:
+            val = _tbl[k].to_s
+            if len(date_format) != len(val):
+                raise Exception("Date format length does not match format: % for value %" % (date_format, val))
+
+
+def _make_data(dict_reader, _tbl, tablename, dates, exit_on_error=False):
     data = ''
     index = 0
     for row in dict_reader:
@@ -77,6 +87,7 @@ def _make_data(dict_reader, _tbl, tablename, exit_on_error=False):
                     dt = _tbl[_k]['type']
                 else:
                     dt = str
+                validify_date_len(dates, k, _tbl)
                 outrow.append(_psqlencode(row[k], dt))
             except ValueError as e:
                 _handle_error(e, k, _k, row, index, dt, tablename, exit_on_error)
@@ -88,7 +99,7 @@ def _make_data(dict_reader, _tbl, tablename, exit_on_error=False):
     return data
 
 
-def out_as_copy_stdin(fields, tablename, delimiter, _tbl, exit_on_error=False):
+def out_as_copy_stdin(fields, tablename, delimiter, _tbl, dates, exit_on_error=False):
     """
     :param fields:
     :param tablename:
@@ -111,7 +122,7 @@ def out_as_copy_stdin(fields, tablename, delimiter, _tbl, exit_on_error=False):
     return PsqlCopyData(copy_statement, data)
 
 
-def out_as_copy_csv(fields, tablename, delimiter, _tbl, csvfilename, exit_on_error=False):
+def out_as_copy_csv(fields, tablename, delimiter, _tbl, csvfilename, dates, exit_on_error=False):
     """
     :param fields:
     :param tablename:
