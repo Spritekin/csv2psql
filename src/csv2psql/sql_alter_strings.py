@@ -30,7 +30,7 @@ date_str = """
 ALTER TABLE {tablename} ALTER COLUMN {col} TYPE DATE
 USING
 CASE
-  WHEN {col} IS NOT NULL AND {col}::INT <> 0
+  WHEN {col} IS NOT NULL AND {col}::INT <> 0 AND char_length({col}::text) = {format_len}
   THEN
     to_date({col}::TEXT,'{dateformat}')
 ELSE

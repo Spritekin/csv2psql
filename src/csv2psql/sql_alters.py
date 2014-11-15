@@ -50,7 +50,7 @@ def dates(tablename, cols, dateformat):
 
 
 def _date(tablename, colname, dateformat):
-    return date_str.format(tablename=tablename, col=colname, dateformat=dateformat)
+    return date_str.format(tablename=tablename, col=colname, dateformat=dateformat, format_len=len(dateformat))
 
 
 def _make_set(fieldnames, primary_key, temp_tablename, make_primary_first):

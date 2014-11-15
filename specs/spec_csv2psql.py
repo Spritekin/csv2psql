@@ -20,7 +20,7 @@ class SqlAlterSpec(unittest.TestCase):
         ALTER TABLE db ALTER COLUMN col1 TYPE DATE
         USING
         CASE
-          WHEN col1 IS NOT NULL AND col1::INT <> 0
+          WHEN col1 IS NOT NULL AND col1::INT <> 0 AND char_length(col1::text) = 4
           THEN
             to_date(col1::TEXT,'YYYY')
         ELSE
