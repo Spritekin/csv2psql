@@ -330,7 +330,7 @@ def csv2psql(stream,
     if result_prints_std_out:
         c_sql = ''
         if _copy_sql:
-            c_sql = _copy_sql.to_psql()
+            c_sql = _copy_sql
         chained = chain(_sql + c_sql + _alter_sql + drop_temp_table_sql)
         chained.pipe()
     else:
