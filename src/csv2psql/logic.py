@@ -192,7 +192,8 @@ def csv2psql(stream,
              append_sql=False,
              new_table_name=None,
              skipp_stored_proc_modified_time=False,
-             delete_temp_table=False):
+             delete_temp_table=False,
+             modified_timestamp=None):
     # maybe copy?
     _sql = ''
     _copy_sql = ''
@@ -289,12 +290,14 @@ def csv2psql(stream,
 
             _alter_sql += sql_alters.fast_delete_dupes(keys, key_name, tablename, True)
             # doing additional cols here as some types are not moved over correctly (with table copy in dupes)
-            _alter_sql += additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge)
+            _alter_sql += additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge,
+                                          modified_timestamp)
 
             _alter_sql += sql_alters.make_primary_key_w_join(tablename, key_name, keys)
 
         if do_add_cols and joinkeys is None:
-            _alter_sql = additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge)
+            _alter_sql = additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge,
+                                         modified_timestamp)
 
         primary_key = pkey if pkey is not None else join_keys_key_name
         if is_array(primary_key):
@@ -369,7 +372,7 @@ def chain(sql, postgres_fn=to_postgres, postgres_copy_fn=to_postgres_copy):
     return obj
 
 
-def additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge):
+def additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge, modified_timestamp="modified_time"):
     '''
     Method add additional columns for sql gen, (sql_alters) and type checking (mangled_field_names)
     '''
@@ -377,7 +380,7 @@ def additional_cols(tablename, serial, timestamp, mangled_field_names, is_merge)
     # for alters in post processing temporary table to add columns
     cols_to_add_later = []
 
-    mod_time = Column("modified_time", "timestamp".upper(), "default current_timestamp")
+    mod_time = Column(modified_timestamp, "timestamp".upper(), "default current_timestamp")
     cols_to_add_later.append(mod_time)
     mangled_field_names.append(mod_time.type)
 

@@ -63,7 +63,9 @@ options include:
 
 --new_table_name=text Expected to be used with --dump , change old tablename to new_table_name
 
-- skipp_stored_proc_modified_time  (defaults to False)
+--skipp_stored_proc_modified_time  (defaults to False)
+
+--modified_timestamp=String allows your to override the modified_time column name
 
 -delete_temp_table Defaults False
 
@@ -146,7 +148,7 @@ def main(argv=None):
                                            "timestamp=", "do_add_cols=", "analyze_table=",
                                            "now", "postgres_url=", "append_sql",
                                            "new_table_name=", "skipp_stored_proc_modified_time",
-                                           "delete_temp_table"])
+                                           "delete_temp_table", "modified_timestamp="])
         # print "opts: "
         # print opts
         # print "end opts"
@@ -234,6 +236,8 @@ def main(argv=None):
                 flags['skipp_stored_proc_modified_time'] = True
             elif o in ("--delete_temp_table"):
                 flags['delete_temp_table'] = True
+            elif o in ("--modified_timestamp"):
+                flags['modified_timestamp'] = a.lower()
             else:
                 raise getopt.GetoptError('unknown option %s' % (o))
 
