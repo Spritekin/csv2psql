@@ -76,9 +76,11 @@ def validify_date_len(dates, k, _tbl):
 def _make_data(dict_reader, _tbl, tablename, dates, exit_on_error=False):
     data = ''
     index = 0
+    max_errors_per_row = 5
     for row in dict_reader:
         index += 1
         outrow = []
+        errors_in_row = 0
         for k in dict_reader.fieldnames:
             assert k in row
             try:
@@ -91,17 +93,26 @@ def _make_data(dict_reader, _tbl, tablename, dates, exit_on_error=False):
                 maybe_col_data = psqlencode(row[k], dt)
                 outrow.append(maybe_col_data)
             except ValueError as e:
+                errors_in_row += 1
+                if errors_in_row > max_errors_per_row:
+                    outrow = []
+                    break
                 _handle_error(e, k, _k, row, index, dt, tablename, exit_on_error)
-                outrow = ''
-                break
+                #append NULL
+                outrow.append('')
             except Exception as e:
+                errors_in_row += 1
+                if errors_in_row > max_errors_per_row:
+                    outrow = []
+                    break
                 _handle_error(e, k, _k, row, index, dt, tablename, exit_on_error)
-                outrow = ''
-                break
+                outrow.append('')
         #skip dead or poorly formatted rows
-        if outrow:
+        if len(outrow) > 0:
+            #tab
             data += "\t".join(outrow)
-        data += "\n"
+            #newline
+            data += "\n"
 
     return data
 
