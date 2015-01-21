@@ -16,24 +16,24 @@ class PsqlCopyData:
         return "\\%s%s\\.\n" % (self.copy_statement, self.data)
 
 
-def _psqlencode(v, dt):
+def psqlencode(v, dt):
     '''encodes using the text mode of PostgreSQL 8.4 "COPY FROM" command
 
-    >>> _psqlencode('hello "there"', str)
+    >>> psqlencode('hello "there"', str)
     'hello "there"'
-    >>> _psqlencode("hello 'there'", str)
+    >>> psqlencode("hello 'there'", str)
     "hello 'there'"
-    >>> _psqlencode('True', int)
+    >>> psqlencode('True', int)
     '1'
-    >>> _psqlencode(100.1, float)
+    >>> psqlencode(100.1, float)
     '100.1'
-    >>> _psqlencode(100.1, int)
+    >>> psqlencode(100.1, int)
     '100'
-    >>> _psqlencode('', str)
+    >>> psqlencode('', str)
     ''
-    >>> _psqlencode(None, int)
+    >>> psqlencode(None, int)
     '\\N'
-    >>> _psqlencode("	", str)
+    >>> psqlencode("	", str)
     '\\x09'
     '''
 
@@ -88,12 +88,19 @@ def _make_data(dict_reader, _tbl, tablename, dates, exit_on_error=False):
                 else:
                     dt = str
                 validify_date_len(dates, k, _tbl)
-                outrow.append(_psqlencode(row[k], dt))
+                maybe_col_data = psqlencode(row[k], dt)
+                outrow.append(maybe_col_data)
             except ValueError as e:
                 _handle_error(e, k, _k, row, index, dt, tablename, exit_on_error)
+                outrow = ''
+                break
             except Exception as e:
                 _handle_error(e, k, _k, row, index, dt, tablename, exit_on_error)
-        data += "\t".join(outrow)
+                outrow = ''
+                break
+        #skip dead or poorly formatted rows
+        if outrow:
+            data += "\t".join(outrow)
         data += "\n"
 
     return data
