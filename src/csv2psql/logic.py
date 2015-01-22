@@ -333,7 +333,13 @@ def csv2psql(stream,
     if result_prints_std_out:
         c_sql = ''
         if _copy_sql:
-            c_sql = _copy_sql
+            c_sql = _copy_sql.to_psql()
+
+        logger.info(False, "PRIOR CHAIN ATTEMPT")
+        logger.info(False, "c_sql: %s" % c_sql)
+        logger.info(False, "_alter_sql: %s" % _alter_sql)
+        logger.info(False, "drop_temp_table_sql: %s" % drop_temp_table_sql)
+
         chained = chain(_sql + c_sql + _alter_sql + drop_temp_table_sql)
         chained.pipe()
     else:

@@ -74,14 +74,22 @@ def validify_date_len(dates, k, _tbl):
 
 
 def _make_data(dict_reader, _tbl, tablename, dates, exit_on_error=False):
+    # TODO Possible alternative to dropping rows
+    # create an error table and append bad rows (with original data as all text cols)
+
     data = ''
     index = 0
     max_errors_per_row = 5
-    for row in dict_reader:
-        index += 1
+
+    fieldnames = dict_reader.fieldnames
+    rows = list(dict_reader)
+    logger.info(False, "rows")
+    totalrows = len(rows) * 1.0
+    logger.info(False, "totalrows %s" % totalrows)
+    for index, row in enumerate(rows):
         outrow = []
         errors_in_row = 0
-        for k in dict_reader.fieldnames:
+        for k in fieldnames:
             assert k in row
             try:
                 _k = mangle(k)
@@ -95,7 +103,7 @@ def _make_data(dict_reader, _tbl, tablename, dates, exit_on_error=False):
             except ValueError as e:
                 errors_in_row += 1
                 if errors_in_row > max_errors_per_row:
-                    outrow = []
+                    outrow = None
                     break
                 _handle_error(e, k, _k, row, index, dt, tablename, exit_on_error)
                 #append NULL
@@ -103,16 +111,25 @@ def _make_data(dict_reader, _tbl, tablename, dates, exit_on_error=False):
             except Exception as e:
                 errors_in_row += 1
                 if errors_in_row > max_errors_per_row:
-                    outrow = []
+                    outrow = None
                     break
                 _handle_error(e, k, _k, row, index, dt, tablename, exit_on_error)
                 outrow.append('')
         #skip dead or poorly formatted rows
-        if len(outrow) > 0:
+        if outrow:
             #tab
             data += "\t".join(outrow)
             #newline
             data += "\n"
+        else:
+            logger.error(False, "%s table has CSV ERROR: skipping row %s" % (tablename, str(index)))
+
+        if index % 10000 == 0 and index != 0:
+            logger.info(False, "\n%s table has progressed to the %s row.\n" % (tablename, str(index)))
+
+            percent = ((index * 1.0) / totalrows) * 100
+            logger.info(False, "\n%s %% complete for table %s.\n" % (str(percent), tablename))
+
 
     return data
 
@@ -173,8 +190,8 @@ def out_as_copy_csv(fields, tablename, delimiter, _tbl, csvfilename, dates, exit
 def _handle_error(e, k, _k, row, index, dt, tablename, exit_on_error):
     # details = {"k": k, "_k": _k, "error_type": type(e), "error": e}
     # logger.error(False, '', '', details)
-    logger.error(False, "CSV ERROR: skipping line for table: %s" % tablename)
-    logger.error(False, "row: %s" % row)
+
+    # logger.error(False, "row: %s" % row)
     logger.error(False, "row#: %s, col: %s, type: %s, value: %s" % (index, k, dt, row[k]))
 
     if exit_on_error:
