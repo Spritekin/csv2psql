@@ -73,7 +73,7 @@ def validify_date_len(dates, k, _tbl):
                 raise Exception("Date format length does not match format: % for value %" % (date_format, val))
 
 
-def _make_data(dict_reader, _tbl, tablename, dates, exit_on_error=False):
+def _make_data(totalrows, dict_reader, _tbl, tablename, dates, exit_on_error=False):
     # TODO Possible alternative to dropping rows
     # create an error table and append bad rows (with original data as all text cols)
 
@@ -81,15 +81,13 @@ def _make_data(dict_reader, _tbl, tablename, dates, exit_on_error=False):
     index = 0
     max_errors_per_row = 5
 
-    fieldnames = dict_reader.fieldnames
-    rows = list(dict_reader)
-    logger.info(False, "rows")
-    totalrows = len(rows) * 1.0
     logger.info(False, "totalrows %s" % totalrows)
-    for index, row in enumerate(rows):
+
+    for row in dict_reader:
+        index += 1
         outrow = []
         errors_in_row = 0
-        for k in fieldnames:
+        for k in dict_reader.fieldnames:
             assert k in row
             try:
                 _k = mangle(k)
@@ -134,7 +132,7 @@ def _make_data(dict_reader, _tbl, tablename, dates, exit_on_error=False):
     return data
 
 
-def out_as_copy_stdin(fields, tablename, delimiter, _tbl, dates, exit_on_error=False):
+def out_as_copy_stdin(totalrows, fields, tablename, delimiter, _tbl, dates, exit_on_error=False):
     """
     :param fields:
     :param tablename:
@@ -153,11 +151,11 @@ def out_as_copy_stdin(fields, tablename, delimiter, _tbl, dates, exit_on_error=F
 
     nullStr = "NULL AS ''"
     copy_statement = "COPY %s FROM stdin %s\n" % (tablename, nullStr)
-    data = _make_data(fields, _tbl, tablename, exit_on_error)
+    data = _make_data(totalrows, fields, _tbl, tablename, exit_on_error)
     return PsqlCopyData(copy_statement, data)
 
 
-def out_as_copy_csv(fields, tablename, delimiter, _tbl, csvfilename, dates, exit_on_error=False):
+def out_as_copy_csv(totalrows, fields, tablename, delimiter, _tbl, csvfilename, dates, exit_on_error=False):
     """
     :param fields:
     :param tablename:
@@ -183,7 +181,7 @@ def out_as_copy_csv(fields, tablename, delimiter, _tbl, csvfilename, dates, exit
     copy_statement = "\COPY {tablename} FROM '{csvfilename}' {nullhandle} CSV HEADER DELIMITER '{delimiter}';".format(
         csvfilename=csvfilename, tablename=tablename, nullhandle=nullStr, delimiter=delimiter)
 
-    data = _make_data(fields, _tbl, tablename, exit_on_error)
+    data = _make_data(totalrows, fields, _tbl, tablename, exit_on_error)
     return PsqlCopyData(copy_statement, data)
 
 
