@@ -268,7 +268,7 @@ def csv2psql(stream,
 
         # pass 2
         if load_data and not skip:
-            total_rows = len(list(dict_reader(data, delimiter))) * 1.0
+            total_rows = data.count("\n")
             reader = dict_reader(data, delimiter)
             if is_std_in:
 
