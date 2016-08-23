@@ -430,23 +430,11 @@ def _create_table(tablename, cascade, _tbl, f, default_to_null,
         (dt, dw) = (_tbl[_k]['type'], _tbl[_k]['width'])
 
         if dt == str:
-            if dw > 0 and dw <= 1024:
-                sqldt = "VARCHAR(%d)" % (dw)
-            else:
-                sqldt = "TEXT"
+            sqldt = "TEXT"
         elif dt == int:
-            if dw > 4:
-                sqldt = "BIGINT"
-            else:
-                if dw > 2:
-                    sqldt = "INTEGER"
-                else:
-                    sqldt = "SMALLINT"
+            sqldt = "INTEGER"
         elif dt == float:
-            if dw > 4:
-                sqldt = "DOUBLE PRECISION"
-            else:
-                sqldt = "REAL"
+            sqldt = "DOUBLE PRECISION"
         else:
             sqldt = "TEXT"  # unlimited length
 
