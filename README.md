@@ -1,7 +1,7 @@
 [![Dependency Status](https://gemnasium.com/nmccready/csv2psql.svg)](https://gemnasium.com/nmccready/csv2psql)
 Master: [![Build Status](https://travis-ci.org/nmccready/csv2psql.png?branch=master)](https://travis-ci.org/nmccready/csv2psql)
 
-NOTE: This code only changes the logic.py so it only uses INTEGER, TEXT and DOUBLE PRECISION for the tables. Other datatypes are removed.
+NOTE: This code only changes the logic.py so it only uses BIGINT, TEXT and DOUBLE PRECISION for the tables. Other datatypes are removed.
 
 To try it out:
 ```
