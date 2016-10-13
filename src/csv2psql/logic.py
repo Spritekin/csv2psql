@@ -432,7 +432,7 @@ def _create_table(tablename, cascade, _tbl, f, default_to_null,
         if dt == str:
             sqldt = "TEXT"
         elif dt == int:
-            sqldt = "INTEGER"
+            sqldt = "BIGINT"
         elif dt == float:
             sqldt = "DOUBLE PRECISION"
         else:
